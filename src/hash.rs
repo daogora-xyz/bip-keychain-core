@@ -6,6 +6,7 @@
 //! - SHA-256
 
 use crate::error::{BipKeychainError, Result};
+use serde_json::Value;
 
 /// Hash function selection for entity derivation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,12 +41,15 @@ fn hmac_sha512(entity_json: &str, parent_entropy: &[u8]) -> Result<[u8; 64]> {
 
     type HmacSha512 = Hmac<Sha512>;
 
+    // Canonicalize JSON for deterministic hashing
+    let canonical = canonicalize_json(entity_json)?;
+
     // Create HMAC instance with parent entropy as key
     let mut mac = HmacSha512::new_from_slice(parent_entropy)
         .map_err(|e| BipKeychainError::HashError(format!("HMAC key error: {}", e)))?;
 
-    // Hash the entity JSON string
-    mac.update(entity_json.as_bytes());
+    // Hash the canonical JSON string
+    mac.update(canonical.as_bytes());
 
     // Finalize and get the result
     let result = mac.finalize();
@@ -68,4 +72,49 @@ fn blake2b_hash(_entity_json: &str) -> Result<[u8; 64]> {
 fn sha256_padded(_entity_json: &str, _parent_entropy: &[u8]) -> Result<[u8; 64]> {
     // Stub: will be implemented later
     unimplemented!("SHA-256 not yet implemented")
+}
+
+/// Canonicalize JSON string for deterministic hashing
+///
+/// If the input is valid JSON, re-serialize it in canonical form:
+/// - Keys sorted alphabetically
+/// - No whitespace
+/// - UTF-8 encoding
+///
+/// If the input is not JSON (e.g., plain text test vectors), return as-is.
+fn canonicalize_json(input: &str) -> Result<String> {
+    // Try to parse as JSON
+    match serde_json::from_str::<Value>(input) {
+        Ok(value) => {
+            // Re-serialize in canonical form (serde_json sorts keys by default)
+            serde_json::to_string(&value)
+                .map_err(|e| BipKeychainError::HashError(format!("JSON serialization error: {}", e)))
+        }
+        Err(_) => {
+            // Not JSON, use input as-is (for test vectors)
+            Ok(input.to_string())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_canonicalize_json() {
+        // Test with pretty-printed JSON
+        let pretty = r#"{
+  "name": "test",
+  "age": 30,
+  "city": "NYC"
+}"#;
+        let canonical = canonicalize_json(pretty).unwrap();
+        assert_eq!(canonical, r#"{"age":30,"city":"NYC","name":"test"}"#);
+
+        // Test with plain text (non-JSON)
+        let plain = "Hi There";
+        let result = canonicalize_json(plain).unwrap();
+        assert_eq!(result, plain);
+    }
 }
