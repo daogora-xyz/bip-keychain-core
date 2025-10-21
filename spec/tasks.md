@@ -20,9 +20,9 @@
 
 #### Subtasks
 
-- [x] **Setup**: Create Cargo.toml (commit: TBD)
-- [x] **Setup**: Create Kiro Specs structure (commit: TBD)
-- [x] **Setup**: Create development workflow docs (commit: TBD)
+- [x] **Setup**: Create Cargo.toml (commit: 6441ddd)
+- [x] **Setup**: Create Kiro Specs structure (commit: 6441ddd)
+- [x] **Setup**: Create development workflow docs (commit: 6441ddd)
 
 **Acceptance Criteria**:
 - [x] Cargo.toml with all dependencies

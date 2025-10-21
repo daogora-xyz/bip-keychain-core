@@ -23,11 +23,14 @@ pub mod error;
 
 // Re-exports for convenience
 pub use entity::{Entity, KeyDerivation};
-pub use hash::HashFunction;
+pub use hash::{HashFunction, hash_entity};
 pub use derivation::derive_key_from_entity;
 pub use bip32_wrapper::Keychain;
 pub use output::{OutputFormat, format_key};
 pub use error::BipKeychainError;
+
+// Also expose hash module for tests
+pub use hash;
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
