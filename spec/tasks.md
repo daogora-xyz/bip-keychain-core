@@ -42,7 +42,7 @@
 #### Subtasks
 
 ##### 2.1: HMAC-SHA-512
-- [ ] **RED**: Write test with NIST test vector
+- [x] **RED**: Write test with NIST test vector (commit: fdc803b)
 - [ ] **GREEN**: Implement using hmac + sha2 crates
 - [ ] **REFACTOR**: Extract canonicalize_json helper
 

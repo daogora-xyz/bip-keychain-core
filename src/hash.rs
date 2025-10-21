@@ -34,9 +34,28 @@ pub fn hash_entity(
 }
 
 /// HMAC-SHA-512 implementation (BIP-85 standard)
-fn hmac_sha512(_entity_json: &str, _parent_entropy: &[u8]) -> Result<[u8; 64]> {
-    // Stub: will be implemented in GREEN phase
-    unimplemented!("HMAC-SHA-512 not yet implemented")
+fn hmac_sha512(entity_json: &str, parent_entropy: &[u8]) -> Result<[u8; 64]> {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha512;
+
+    type HmacSha512 = Hmac<Sha512>;
+
+    // Create HMAC instance with parent entropy as key
+    let mut mac = HmacSha512::new_from_slice(parent_entropy)
+        .map_err(|e| BipKeychainError::HashError(format!("HMAC key error: {}", e)))?;
+
+    // Hash the entity JSON string
+    mac.update(entity_json.as_bytes());
+
+    // Finalize and get the result
+    let result = mac.finalize();
+    let bytes = result.into_bytes();
+
+    // Convert to fixed-size array
+    let mut output = [0u8; 64];
+    output.copy_from_slice(&bytes);
+
+    Ok(output)
 }
 
 /// BLAKE2b implementation (Blockchain Commons)
