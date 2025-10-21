@@ -47,7 +47,7 @@
 - [x] **REFACTOR**: Extract canonicalize_json helper (commit: c916b8d)
 
 ##### 2.2: BLAKE2b (Blockchain Commons)
-- [ ] **RED**: Write test with BLAKE2 official test vector
+- [x] **RED**: Write test with BLAKE2 official test vector (commit: 555822f)
 - [ ] **GREEN**: Implement using alkali crate (libsodium bindings)
 - [ ] **REFACTOR**: Optimize for large entities
 
