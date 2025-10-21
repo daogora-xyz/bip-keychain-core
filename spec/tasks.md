@@ -44,7 +44,7 @@
 ##### 2.1: HMAC-SHA-512
 - [x] **RED**: Write test with NIST test vector (commit: fdc803b)
 - [x] **GREEN**: Implement using hmac + sha2 crates (commit: d81bc93)
-- [ ] **REFACTOR**: Extract canonicalize_json helper
+- [x] **REFACTOR**: Extract canonicalize_json helper (commit: c916b8d)
 
 ##### 2.2: BLAKE2b (Blockchain Commons)
 - [ ] **RED**: Write test with libsodium test vector
