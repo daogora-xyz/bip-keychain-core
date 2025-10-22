@@ -2,13 +2,9 @@
 //!
 //! Tests the complete flow: Entity JSON → Hash → Index → BIP-32 Derive → Key
 
-use bip_keychain::{Keychain, KeyDerivation, HashFunction};
-
-// This will fail until we implement derivation.rs
-// use bip_keychain::derive_key_from_entity;
+use bip_keychain::{Keychain, KeyDerivation, HashFunction, derive_key_from_entity};
 
 #[test]
-#[ignore] // Ignore until derivation module is implemented
 fn test_end_to_end_derivation() {
     // Complete workflow: entity → derived key
 
@@ -37,17 +33,16 @@ fn test_end_to_end_derivation() {
     let keychain = Keychain::from_mnemonic(mnemonic)
         .expect("Should create keychain");
 
-    // Derive key (this will work once we implement derivation.rs)
-    // let derived_key = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy")
-    //     .expect("Should derive key from entity");
+    // Derive key
+    let derived_key = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy")
+        .expect("Should derive key from entity");
 
     // Should get 32 bytes for Ed25519
-    // let seed = derived_key.to_seed();
-    // assert_eq!(seed.len(), 32);
+    let seed = derived_key.to_seed();
+    assert_eq!(seed.len(), 32);
 }
 
 #[test]
-#[ignore]
 fn test_deterministic_entity_derivation() {
     // Same entity should always produce same key
 
@@ -70,15 +65,14 @@ fn test_deterministic_entity_derivation() {
     let keychain = Keychain::from_mnemonic(mnemonic).unwrap();
 
     // Derive twice
-    // let derived1 = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy").unwrap();
-    // let derived2 = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy").unwrap();
+    let derived1 = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy").unwrap();
+    let derived2 = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy").unwrap();
 
     // Should be identical
-    // assert_eq!(derived1.to_bytes(), derived2.to_bytes());
+    assert_eq!(derived1.to_bytes(), derived2.to_bytes());
 }
 
 #[test]
-#[ignore]
 fn test_different_entities_different_keys() {
     // Different entities should produce different keys
 
@@ -101,15 +95,14 @@ fn test_different_entities_different_keys() {
     let keychain = Keychain::from_mnemonic(mnemonic).unwrap();
 
     // Derive from different entities
-    // let derived1 = derive_key_from_entity(&keychain, &key_deriv1, b"parent_entropy").unwrap();
-    // let derived2 = derive_key_from_entity(&keychain, &key_deriv2, b"parent_entropy").unwrap();
+    let derived1 = derive_key_from_entity(&keychain, &key_deriv1, b"parent_entropy").unwrap();
+    let derived2 = derive_key_from_entity(&keychain, &key_deriv2, b"parent_entropy").unwrap();
 
     // Should be different
-    // assert_ne!(derived1.to_bytes(), derived2.to_bytes());
+    assert_ne!(derived1.to_bytes(), derived2.to_bytes());
 }
 
 #[test]
-#[ignore]
 fn test_blake2b_derivation() {
     // Test using BLAKE2b hash function
 
@@ -131,10 +124,10 @@ fn test_blake2b_derivation() {
     let keychain = Keychain::from_mnemonic(mnemonic).unwrap();
 
     // Derive using BLAKE2b
-    // let derived = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy").unwrap();
+    let derived = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy").unwrap();
 
     // Should still get valid key
-    // assert_eq!(derived.to_seed().len(), 32);
+    assert_eq!(derived.to_seed().len(), 32);
 }
 
 // Helper test: manually test the derivation flow step by step
