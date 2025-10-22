@@ -18,7 +18,7 @@ pub mod entity;
 pub mod hash;
 pub mod derivation;
 pub mod bip32_wrapper;
-// pub mod output;          // TODO: Implement in Phase 3
+pub mod output;
 pub mod error;
 
 // Re-exports for convenience
@@ -26,7 +26,7 @@ pub use entity::{KeyDerivation, DerivationConfig, HashFunctionConfig};
 pub use hash::{HashFunction, hash_entity};
 pub use derivation::derive_key_from_entity;
 pub use bip32_wrapper::{Keychain, DerivedKey};
-// pub use output::{OutputFormat, format_key};
+pub use output::{OutputFormat, Ed25519Keypair, format_key};
 pub use error::BipKeychainError;
 
 // Also expose hash module for tests

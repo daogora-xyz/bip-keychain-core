@@ -3,7 +3,7 @@
 //! Command-line interface for deriving cryptographic keys from semantic entities.
 
 use anyhow::{Context, Result};
-use bip_keychain::{derive_key_from_entity, Keychain, KeyDerivation};
+use bip_keychain::{derive_key_from_entity, format_key, Keychain, KeyDerivation, OutputFormat};
 use clap::{Parser, Subcommand};
 use std::env;
 use std::fs;
@@ -45,8 +45,8 @@ enum Commands {
         parent_entropy: Option<String>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "hex")]
-        format: OutputFormat,
+        #[arg(long, value_enum, default_value = "ssh")]
+        format: CliOutputFormat,
     },
 
     /// Generate a new BIP-39 seed phrase
@@ -62,11 +62,29 @@ enum Commands {
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]
-enum OutputFormat {
-    /// Hexadecimal encoding of Ed25519 seed
-    Hex,
-    /// JSON with metadata
+enum CliOutputFormat {
+    /// Raw 32-byte seed as hex
+    Seed,
+    /// Ed25519 public key as hex
+    PublicKey,
+    /// Ed25519 private key as hex (use with caution!)
+    PrivateKey,
+    /// OpenSSH public key format (default, most useful)
+    Ssh,
+    /// JSON with all key data and metadata
     Json,
+}
+
+impl From<CliOutputFormat> for OutputFormat {
+    fn from(cli_format: CliOutputFormat) -> Self {
+        match cli_format {
+            CliOutputFormat::Seed => OutputFormat::HexSeed,
+            CliOutputFormat::PublicKey => OutputFormat::Ed25519PublicHex,
+            CliOutputFormat::PrivateKey => OutputFormat::Ed25519PrivateHex,
+            CliOutputFormat::Ssh => OutputFormat::SshPublicKey,
+            CliOutputFormat::Json => OutputFormat::Json,
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -85,7 +103,7 @@ fn main() -> Result<()> {
 fn derive_command(
     entity_file: PathBuf,
     parent_entropy_hex: Option<String>,
-    format: OutputFormat,
+    format: CliOutputFormat,
 ) -> Result<()> {
     // Read entity JSON file
     let entity_json = fs::read_to_string(&entity_file)
@@ -122,24 +140,12 @@ fn derive_command(
     let derived_key = derive_key_from_entity(&keychain, &key_derivation, &parent_entropy)
         .context("Failed to derive key from entity")?;
 
-    // Extract Ed25519 seed
-    let ed25519_seed = derived_key.to_seed();
+    // Format and output
+    let output_format: OutputFormat = format.into();
+    let output = format_key(&derived_key, &key_derivation, output_format)
+        .context("Failed to format key output")?;
 
-    // Output based on format
-    match format {
-        OutputFormat::Hex => {
-            println!("{}", hex::encode(ed25519_seed));
-        }
-        OutputFormat::Json => {
-            let output = serde_json::json!({
-                "ed25519_seed": hex::encode(ed25519_seed),
-                "schema_type": key_derivation.schema_type,
-                "hash_function": format!("{:?}", key_derivation.derivation_config.hash_function),
-                "purpose": key_derivation.purpose,
-            });
-            println!("{}", serde_json::to_string_pretty(&output)?);
-        }
-    }
+    println!("{}", output);
 
     Ok(())
 }
