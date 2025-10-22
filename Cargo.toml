@@ -25,6 +25,7 @@ serde_json = "1.0"
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
+hex = "0.4"  # Hex encoding for CLI and tests
 
 # Error handling
 thiserror = "1.0"
@@ -33,7 +34,6 @@ anyhow = "1.0"
 [dev-dependencies]
 # Testing
 proptest = "1.0"  # Property-based testing
-hex = "0.4"       # Hex encoding for test vectors
 
 [[bin]]
 name = "bip-keychain"

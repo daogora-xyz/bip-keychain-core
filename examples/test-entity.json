@@ -1,0 +1,15 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "codeRepository": "https://github.com/DAOgora-xyz/bip-keychain-core",
+    "programmingLanguage": "Rust",
+    "name": "BIP-Keychain Core"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Git commit signing key for bip-keychain-core repository"
+}
