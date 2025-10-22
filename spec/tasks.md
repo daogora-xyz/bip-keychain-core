@@ -49,7 +49,7 @@
 ##### 2.2: BLAKE2b (Blockchain Commons)
 - [x] **RED**: Write test with BLAKE2 official test vector (commit: 555822f)
 - [x] **GREEN**: Implement using alkali crate (libsodium bindings) (commit: f67ae3f)
-- [ ] **REFACTOR**: Optimize for large entities
+- [x] **REFACTOR**: Optimize for large entities (commit: eaae33a)
 
 ##### 2.3: SHA-256
 - [ ] **RED**: Write test with NIST test vector

@@ -2,11 +2,9 @@
 //!
 //! Tests parsing of Nickel-exported JSON entities into Rust structs.
 
-// This will fail until we implement entity.rs
-// use bip_keychain::entity::{KeyDerivation, DerivationConfig, HashFunctionConfig};
+use bip_keychain::{KeyDerivation, HashFunctionConfig};
 
 #[test]
-#[ignore] // Ignore until entity module is implemented
 fn test_parse_schema_org_entity() {
     // Example from nickel/examples/github-repo-schema-org.ncl
     let json = r#"{
@@ -29,21 +27,17 @@ fn test_parse_schema_org_entity() {
   }
 }"#;
 
-    // This will work once we implement entity.rs
-    // let key_derivation: KeyDerivation = serde_json::from_str(json)
-    //     .expect("Should parse schema.org entity JSON");
+    let key_derivation = KeyDerivation::from_json(json)
+        .expect("Should parse schema.org entity JSON");
 
-    // assert_eq!(key_derivation.schema_type, "schema_org");
-    // assert_eq!(key_derivation.derivation_config.hash_function, "hmac_sha512");
-    // assert_eq!(key_derivation.derivation_config.hardened, true);
-    // assert_eq!(key_derivation.purpose.unwrap(), "Git commit signing key for bip-keychain-core repository");
+    assert_eq!(key_derivation.schema_type, "schema_org");
+    assert_eq!(key_derivation.derivation_config.hash_function, HashFunctionConfig::HmacSha512);
+    assert_eq!(key_derivation.derivation_config.hardened, true);
+    assert_eq!(key_derivation.purpose.unwrap(), "Git commit signing key for bip-keychain-core repository");
 
-    // For now, just verify it's valid JSON
-    let value: serde_json::Value = serde_json::from_str(json)
-        .expect("Should be valid JSON");
-
-    assert_eq!(value["schema_type"], "schema_org");
-    assert_eq!(value["entity"]["@type"], "SoftwareSourceCode");
+    // Verify entity fields
+    assert_eq!(key_derivation.entity["@type"], "SoftwareSourceCode");
+    assert_eq!(key_derivation.entity["name"], "BIP-Keychain Core");
 }
 
 #[test]
@@ -62,10 +56,12 @@ fn test_parse_entity_with_minimal_fields() {
   }
 }"#;
 
-    let value: serde_json::Value = serde_json::from_str(json)
+    let key_derivation = KeyDerivation::from_json(json)
         .expect("Should parse minimal entity");
 
-    assert_eq!(value["schema_type"], "schema_org");
+    assert_eq!(key_derivation.schema_type, "schema_org");
+    assert!(key_derivation.purpose.is_none());
+    assert!(key_derivation.metadata.is_none());
 }
 
 #[test]
@@ -84,8 +80,10 @@ fn test_parse_entity_with_blake2b() {
   "purpose": "Selective disclosure credentials"
 }"#;
 
-    let value: serde_json::Value = serde_json::from_str(json)
+    let key_derivation = KeyDerivation::from_json(json)
         .expect("Should parse BLAKE2b entity");
 
-    assert_eq!(value["derivation_config"]["hash_function"], "blake2b");
+    assert_eq!(key_derivation.derivation_config.hash_function, HashFunctionConfig::Blake2b);
+    assert_eq!(key_derivation.schema_type, "gordian_envelope");
+    assert_eq!(key_derivation.purpose.unwrap(), "Selective disclosure credentials");
 }
