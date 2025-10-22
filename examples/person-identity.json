@@ -1,0 +1,19 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "Person",
+    "@id": "https://example.com/people/alice",
+    "name": "Alice Developer",
+    "email": "alice@example.com",
+    "jobTitle": "Software Engineer",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "ACME Corporation"
+    }
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Personal identity key for Alice (work context)"
+}

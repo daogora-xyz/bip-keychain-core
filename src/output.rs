@@ -20,6 +20,8 @@ pub enum OutputFormat {
     Ed25519PrivateHex,
     /// OpenSSH public key format
     SshPublicKey,
+    /// GPG-compatible public key info (for manual import)
+    GpgPublicKey,
     /// JSON with all key data
     Json,
 }
@@ -113,6 +115,38 @@ impl Ed25519Keypair {
             hex::encode(self.private_key_bytes())
         )
     }
+
+    /// Format as GPG-compatible public key information
+    ///
+    /// Provides the Ed25519 public key in a format that can be imported into GPG.
+    /// Note: This provides key material for manual import, not a full OpenPGP packet.
+    pub fn to_gpg_public_key(&self, comment: Option<&str>) -> String {
+        let pubkey_hex = hex::encode(self.public_key_bytes());
+        let comment_str = comment.unwrap_or("bip-keychain");
+
+        format!(
+            "GPG Ed25519 Public Key\n\
+             =====================\n\
+             Comment: {}\n\
+             \n\
+             Public Key (hex, 32 bytes):\n\
+             {}\n\
+             \n\
+             To import into GPG:\n\
+             1. Save this key material\n\
+             2. Use: gpg --import (if in OpenPGP format)\n\
+             3. Or use: gpg --expert --full-gen-key to create key from seed\n\
+             \n\
+             For Git signing:\n\
+             1. Import/create GPG key\n\
+             2. git config --global user.signingkey <KEY-ID>\n\
+             3. git config --global commit.gpgsign true\n\
+             \n\
+             Note: Full OpenPGP packet format not yet implemented.\n\
+             See GIT-SIGNING-GUIDE.md for detailed instructions.",
+            comment_str, pubkey_hex
+        )
+    }
 }
 
 /// Format a derived key according to the specified output format
@@ -148,6 +182,17 @@ pub fn format_key(
                 .map(|s| s.as_str())
                 .unwrap_or("bip-keychain");
             Ok(keypair.to_ssh_public_key(Some(comment)))
+        }
+
+        OutputFormat::GpgPublicKey => {
+            // GPG public key information
+            let keypair = Ed25519Keypair::from_derived_key(derived);
+            let comment = key_derivation
+                .purpose
+                .as_ref()
+                .map(|s| s.as_str())
+                .unwrap_or("bip-keychain");
+            Ok(keypair.to_gpg_public_key(Some(comment)))
         }
 
         OutputFormat::Json => {

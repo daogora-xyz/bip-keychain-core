@@ -1,0 +1,17 @@
+{
+  "schema_type": "ipfs",
+  "entity": {
+    "cid": "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+    "type": "directory",
+    "description": "Distributed content signing key"
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "Signing key for IPFS content verification",
+  "metadata": {
+    "ipfs_network": "mainnet",
+    "content_type": "public_dataset"
+  }
+}

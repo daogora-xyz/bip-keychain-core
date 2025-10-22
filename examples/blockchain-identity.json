@@ -1,0 +1,19 @@
+{
+  "schema_type": "blockchain",
+  "entity": {
+    "chain": "ethereum",
+    "network": "mainnet",
+    "purpose": "identity",
+    "ens_name": "alice.eth"
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "Blockchain identity and transaction signing key",
+  "metadata": {
+    "blockchain": "ethereum",
+    "use_case": "web3_identity",
+    "ens_domain": "alice.eth"
+  }
+}

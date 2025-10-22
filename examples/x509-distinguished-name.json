@@ -1,0 +1,21 @@
+{
+  "schema_type": "x509_dn",
+  "entity": {
+    "CN": "Alice Developer",
+    "OU": "Engineering",
+    "O": "ACME Corporation",
+    "L": "San Francisco",
+    "ST": "California",
+    "C": "US",
+    "emailAddress": "alice@acme.com"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "X.509 certificate signing key for TLS/SSL",
+  "metadata": {
+    "certificate_type": "server",
+    "key_usage": ["digital_signature", "key_encipherment"]
+  }
+}

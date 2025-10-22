@@ -1,0 +1,23 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "SoftwareApplication",
+    "name": "MyAwesomeApp",
+    "version": "2.1.0",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "author": {
+      "@type": "Organization",
+      "name": "Example Software Inc."
+    }
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "Software application code signing key",
+  "metadata": {
+    "signature_format": "authenticode",
+    "platforms": ["linux", "macos", "windows"]
+  }
+}

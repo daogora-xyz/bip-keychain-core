@@ -71,6 +71,8 @@ enum CliOutputFormat {
     PrivateKey,
     /// OpenSSH public key format (default, most useful)
     Ssh,
+    /// GPG-compatible public key info (for Git signing)
+    Gpg,
     /// JSON with all key data and metadata
     Json,
 }
@@ -82,6 +84,7 @@ impl From<CliOutputFormat> for OutputFormat {
             CliOutputFormat::PublicKey => OutputFormat::Ed25519PublicHex,
             CliOutputFormat::PrivateKey => OutputFormat::Ed25519PrivateHex,
             CliOutputFormat::Ssh => OutputFormat::SshPublicKey,
+            CliOutputFormat::Gpg => OutputFormat::GpgPublicKey,
             CliOutputFormat::Json => OutputFormat::Json,
         }
     }

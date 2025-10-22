@@ -1,0 +1,17 @@
+{
+  "schema_type": "email",
+  "entity": {
+    "address": "alice@example.com",
+    "domain": "example.com",
+    "local_part": "alice"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Email signing and encryption key (S/MIME, PGP)",
+  "metadata": {
+    "key_usage": ["email_signing", "email_encryption"],
+    "email_client": "thunderbird"
+  }
+}

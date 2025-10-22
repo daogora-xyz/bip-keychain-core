@@ -1,0 +1,19 @@
+{
+  "schema_type": "dns",
+  "entity": {
+    "fqdn": "api.myservice.com",
+    "subdomain": "api",
+    "domain": "myservice.com",
+    "service_type": "REST API"
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "API service authentication and request signing",
+  "metadata": {
+    "api_version": "v1",
+    "auth_method": "jwt",
+    "rate_limit": "1000/hour"
+  }
+}

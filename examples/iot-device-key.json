@@ -1,0 +1,24 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "Thing",
+    "@id": "urn:dev:mac:001122334455",
+    "name": "Smart Temperature Sensor #42",
+    "identifier": "001122334455",
+    "manufacturer": {
+      "@type": "Organization",
+      "name": "SmartHome Inc."
+    },
+    "model": "TempSensor-Pro-2024"
+  },
+  "derivation_config": {
+    "hash_function": "sha256",
+    "hardened": true
+  },
+  "purpose": "IoT device attestation and telemetry signing",
+  "metadata": {
+    "device_type": "sensor",
+    "protocol": "mqtt",
+    "deployment": "home_automation"
+  }
+}

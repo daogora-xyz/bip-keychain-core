@@ -1,0 +1,407 @@
+# CI/CD Integration Examples for BIP-Keychain
+#
+# Shows how to use BIP-Keychain in various CI/CD platforms
+# for deterministic key generation in automated pipelines
+
+# ==============================================================================
+# GitHub Actions Example
+# ==============================================================================
+#
+# File: .github/workflows/deploy.yml
+---
+name: Deploy with BIP-Keychain
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install BIP-Keychain
+        run: |
+          git clone https://github.com/daogora-xyz/bip-keychain-core
+          cd bip-keychain-core
+          cargo install --path .
+
+      - name: Derive deployment SSH key
+        env:
+          BIP_KEYCHAIN_SEED: ${{ secrets.BIP_KEYCHAIN_SEED }}
+        run: |
+          # Derive SSH key for production deployment
+          bip-keychain derive entities/production-deploy.json --format ssh > /tmp/deploy-key.pub
+
+          echo "✓ Deployment key derived"
+          cat /tmp/deploy-key.pub
+
+      - name: Deploy to servers
+        env:
+          BIP_KEYCHAIN_SEED: ${{ secrets.BIP_KEYCHAIN_SEED }}
+        run: |
+          # Deploy using derived key
+          # (Actual deployment commands here)
+          echo "Deploying with BIP-Keychain derived credentials..."
+
+      - name: Cleanup
+        if: always()
+        run: |
+          # Securely delete any derived keys
+          shred -vfz -n 10 /tmp/deploy-key.pub 2>/dev/null || true
+
+# ==============================================================================
+# GitLab CI Example
+# ==============================================================================
+#
+# File: .gitlab-ci.yml
+---
+deploy:
+  stage: deploy
+  image: rust:latest
+
+  before_script:
+    - apt-get update && apt-get install -y git build-essential
+    - git clone https://github.com/daogora-xyz/bip-keychain-core
+    - cd bip-keychain-core && cargo install --path . && cd ..
+
+  script:
+    - |
+      # Derive deployment keys
+      export BIP_KEYCHAIN_SEED="${BIP_KEYCHAIN_SEED}"
+      bip-keychain derive entities/gitlab-deploy.json --format ssh > deploy-key.pub
+
+      echo "✓ Deployment key derived"
+
+      # Use key for deployment
+      # (Actual deployment here)
+
+  after_script:
+    - shred -vfz -n 10 deploy-key.pub 2>/dev/null || true
+
+  only:
+    - main
+
+  variables:
+    BIP_KEYCHAIN_SEED: ${BIP_KEYCHAIN_SEED}
+
+# ==============================================================================
+# CircleCI Example
+# ==============================================================================
+#
+# File: .circleci/config.yml
+---
+version: 2.1
+
+jobs:
+  deploy:
+    docker:
+      - image: cimg/rust:1.70
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install BIP-Keychain
+          command: |
+            git clone https://github.com/daogora-xyz/bip-keychain-core
+            cd bip-keychain-core
+            cargo install --path .
+
+      - run:
+          name: Derive deployment key
+          command: |
+            bip-keychain derive entities/circleci-deploy.json \
+              --format ssh > /tmp/deploy-key.pub
+
+            echo "✓ Key derived"
+
+      - run:
+          name: Deploy
+          command: |
+            # Use derived key for deployment
+            echo "Deploying..."
+
+      - run:
+          name: Cleanup
+          when: always
+          command: |
+            shred -vfz -n 10 /tmp/deploy-key.pub 2>/dev/null || true
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - deploy:
+          context: production
+          filters:
+            branches:
+              only: main
+
+# ==============================================================================
+# Jenkins Pipeline Example
+# ==============================================================================
+#
+# File: Jenkinsfile
+pipeline {
+    agent any
+
+    environment {
+        BIP_KEYCHAIN_SEED = credentials('bip-keychain-seed')
+    }
+
+    stages {
+        stage('Setup') {
+            steps {
+                sh '''
+                    # Install BIP-Keychain
+                    git clone https://github.com/daogora-xyz/bip-keychain-core
+                    cd bip-keychain-core
+                    cargo install --path .
+                '''
+            }
+        }
+
+        stage('Derive Keys') {
+            steps {
+                sh '''
+                    # Derive deployment SSH key
+                    bip-keychain derive entities/jenkins-deploy.json \
+                        --format ssh > /tmp/deploy-key.pub
+
+                    echo "✓ Deployment key derived"
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    # Deploy using derived key
+                    echo "Deploying with BIP-Keychain credentials..."
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'shred -vfz -n 10 /tmp/deploy-key.pub 2>/dev/null || true'
+        }
+    }
+}
+
+# ==============================================================================
+# Azure Pipelines Example
+# ==============================================================================
+#
+# File: azure-pipelines.yml
+---
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: bip-keychain-secrets
+
+steps:
+  - task: Bash@3
+    displayName: 'Install BIP-Keychain'
+    inputs:
+      targetType: 'inline'
+      script: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
+        git clone https://github.com/daogora-xyz/bip-keychain-core
+        cd bip-keychain-core
+        cargo install --path .
+
+  - task: Bash@3
+    displayName: 'Derive deployment key'
+    env:
+      BIP_KEYCHAIN_SEED: $(BipKeychainSeed)
+    inputs:
+      targetType: 'inline'
+      script: |
+        bip-keychain derive entities/azure-deploy.json \
+          --format ssh > /tmp/deploy-key.pub
+        echo "✓ Key derived"
+
+  - task: Bash@3
+    displayName: 'Deploy'
+    inputs:
+      targetType: 'inline'
+      script: |
+        echo "Deploying with BIP-Keychain credentials..."
+
+  - task: Bash@3
+    displayName: 'Cleanup'
+    condition: always()
+    inputs:
+      targetType: 'inline'
+      script: |
+        shred -vfz -n 10 /tmp/deploy-key.pub 2>/dev/null || true
+
+# ==============================================================================
+# Drone CI Example
+# ==============================================================================
+#
+# File: .drone.yml
+---
+kind: pipeline
+type: docker
+name: deploy
+
+steps:
+  - name: install-bip-keychain
+    image: rust:latest
+    commands:
+      - git clone https://github.com/daogora-xyz/bip-keychain-core
+      - cd bip-keychain-core
+      - cargo install --path .
+
+  - name: derive-keys
+    image: rust:latest
+    environment:
+      BIP_KEYCHAIN_SEED:
+        from_secret: bip_keychain_seed
+    commands:
+      - bip-keychain derive entities/drone-deploy.json --format ssh > /tmp/deploy-key.pub
+      - echo "✓ Key derived"
+
+  - name: deploy
+    image: rust:latest
+    commands:
+      - echo "Deploying..."
+
+  - name: cleanup
+    image: rust:latest
+    when:
+      status:
+        - success
+        - failure
+    commands:
+      - shred -vfz -n 10 /tmp/deploy-key.pub 2>/dev/null || true
+
+trigger:
+  branch:
+    - main
+
+# ==============================================================================
+# Docker Compose for Local CI/CD Testing
+# ==============================================================================
+#
+# File: docker-compose.yml
+---
+version: '3.8'
+
+services:
+  bip-keychain-ci:
+    image: rust:latest
+    environment:
+      - BIP_KEYCHAIN_SEED=${BIP_KEYCHAIN_SEED}
+    volumes:
+      - .:/workspace
+      - ./entities:/workspace/entities
+    working_dir: /workspace
+    command: |
+      bash -c "
+        echo '=== Installing BIP-Keychain ==='
+        cargo install --path .
+
+        echo ''
+        echo '=== Deriving keys from entities ==='
+        for entity in entities/*.json; do
+          echo \"Processing: \$entity\"
+          bip-keychain derive \"\$entity\" --format ssh
+          echo ''
+        done
+
+        echo '=== CI/CD simulation complete ==='
+      "
+
+# ==============================================================================
+# Best Practices for CI/CD Integration
+# ==============================================================================
+#
+# 1. SECRET MANAGEMENT
+#    - Store BIP_KEYCHAIN_SEED in CI/CD secret store
+#    - Never commit seed phrase to version control
+#    - Use environment variables, not files
+#
+# 2. KEY LIFECYCLE
+#    - Derive keys at runtime (don't store derived keys)
+#    - Delete derived keys immediately after use
+#    - Use shred/secure deletion for cleanup
+#
+# 3. ENTITY VERSIONING
+#    - Version control entity JSON files (safe - no secrets)
+#    - Use descriptive entity names (e.g., production-deploy.json)
+#    - Document entity purpose in "purpose" field
+#
+# 4. ENVIRONMENT SEPARATION
+#    - Use different parent entropy for dev/staging/prod
+#    - Or use different entity definitions per environment
+#    - Never reuse production seed in development
+#
+# 5. AUDIT & MONITORING
+#    - Log key derivation events (not the keys themselves!)
+#    - Monitor for unexpected key usage
+#    - Rotate keys periodically by updating entities
+#
+# 6. DISASTER RECOVERY
+#    - Backup seed phrase securely (hardware wallet recommended)
+#    - Test key regeneration process regularly
+#    - Document entity-to-service mapping
+#
+# ==============================================================================
+# Example Entity for CI/CD
+# ==============================================================================
+#
+# File: entities/production-deploy.json
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "SoftwareApplication",
+    "name": "MyApp Production Deploy",
+    "version": "1.0",
+    "environment": "production"
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "Production deployment SSH key for CI/CD",
+  "metadata": {
+    "cicd_platform": "github_actions",
+    "deployment_target": "production_cluster",
+    "rotation_schedule": "quarterly"
+  }
+}
+
+# ==============================================================================
+# Security Checklist
+# ==============================================================================
+#
+# □ Seed phrase stored in CI/CD secrets (not in code)
+# □ Derived keys deleted after use
+# □ Entity files version controlled
+# □ Different entities/entropy for each environment
+# □ Audit logging enabled
+# □ Disaster recovery tested
+# □ Team trained on key regeneration
+# □ Key rotation schedule defined
+#

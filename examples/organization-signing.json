@@ -1,0 +1,21 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "Organization",
+    "@id": "https://example.org",
+    "name": "Example Foundation",
+    "url": "https://example.org",
+    "email": "security@example.org",
+    "description": "Non-profit organization"
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "Organization signing key for release artifacts",
+  "metadata": {
+    "key_usage": ["code_signing", "document_signing"],
+    "valid_from": "2024-01-01",
+    "valid_until": "2025-12-31"
+  }
+}
