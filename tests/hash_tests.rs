@@ -155,3 +155,93 @@ fn test_blake2b_with_json_entity() {
 
     assert_eq!(result1.len(), 64, "BLAKE2b should produce 64 bytes");
 }
+
+// SHA-256 tests
+
+#[test]
+fn test_sha256_empty_string() {
+    // SHA-256 test vector from NIST
+    // Input: "" (empty string)
+    // Output (32 bytes): SHA-256 hash of empty string
+    // Source: NIST FIPS 180-4
+
+    let data = "";
+    let dummy_entropy = &[0u8; 32]; // SHA-256 doesn't use parent entropy in our implementation
+
+    // SHA-256 of empty string:
+    // e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    let expected_32 = hex::decode(
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ).unwrap();
+
+    // Our implementation pads to 64 bytes
+    let mut expected = vec![0u8; 64];
+    expected[..32].copy_from_slice(&expected_32);
+
+    let result = hash_entity(data, dummy_entropy, HashFunction::Sha256)
+        .expect("SHA-256 should succeed");
+
+    assert_eq!(
+        result.as_slice(),
+        expected.as_slice(),
+        "SHA-256 output should match NIST test vector for empty string"
+    );
+}
+
+#[test]
+fn test_sha256_abc() {
+    // SHA-256 test vector from NIST
+    // Input: "abc"
+    // Output (32 bytes): SHA-256 hash of "abc"
+
+    let data = "abc";
+    let dummy_entropy = &[0u8; 32];
+
+    // SHA-256 of "abc":
+    // ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+    let expected_32 = hex::decode(
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    ).unwrap();
+
+    let mut expected = vec![0u8; 64];
+    expected[..32].copy_from_slice(&expected_32);
+
+    let result = hash_entity(data, dummy_entropy, HashFunction::Sha256)
+        .expect("SHA-256 should succeed");
+
+    assert_eq!(
+        result.as_slice(),
+        expected.as_slice(),
+        "SHA-256 output should match NIST test vector for 'abc'"
+    );
+}
+
+#[test]
+fn test_sha256_with_json_entity() {
+    // BIP-Keychain specific test: JSON entity with SHA-256
+
+    let entity_json = r#"{"@context":"https://schema.org","@type":"Thing","name":"Test"}"#;
+    let dummy_entropy = &[0u8; 32];
+
+    // Test determinism
+    let result1 = hash_entity(entity_json, dummy_entropy, HashFunction::Sha256)
+        .expect("Should hash entity JSON with SHA-256");
+
+    let result2 = hash_entity(entity_json, dummy_entropy, HashFunction::Sha256)
+        .expect("Should hash entity JSON with SHA-256");
+
+    assert_eq!(
+        result1, result2,
+        "Same input should produce same output (determinism)"
+    );
+
+    assert_eq!(result1.len(), 64, "SHA-256 (padded) should produce 64 bytes");
+
+    // Verify first 32 bytes are non-zero (the actual hash)
+    // and last 32 bytes are zero (the padding)
+    let has_nonzero_in_first_half = result1[..32].iter().any(|&b| b != 0);
+    let all_zero_in_second_half = result1[32..].iter().all(|&b| b == 0);
+
+    assert!(has_nonzero_in_first_half, "First 32 bytes should contain the hash");
+    assert!(all_zero_in_second_half, "Last 32 bytes should be zero padding");
+}

@@ -93,9 +93,30 @@ fn blake2b_hash(entity_json: &str) -> Result<[u8; 64]> {
 }
 
 /// SHA-256 implementation (padded to 64 bytes)
-fn sha256_padded(_entity_json: &str, _parent_entropy: &[u8]) -> Result<[u8; 64]> {
-    // Stub: will be implemented later
-    unimplemented!("SHA-256 not yet implemented")
+///
+/// Uses SHA-256 which produces 32 bytes, then pads with zeros to 64 bytes
+/// for consistency with other hash functions. This is an alternative hash
+/// function for compatibility with systems that don't support BLAKE2b.
+///
+/// Note: For security-critical applications, prefer HMAC-SHA-512 or BLAKE2b
+/// which natively produce 512-bit (64-byte) outputs.
+fn sha256_padded(entity_json: &str, _parent_entropy: &[u8]) -> Result<[u8; 64]> {
+    use sha2::{Sha256, Digest};
+
+    // Canonicalize JSON for deterministic hashing
+    let canonical = canonicalize_json(entity_json)?;
+
+    // SHA-256 hash (32 bytes)
+    let mut hasher = Sha256::new();
+    hasher.update(canonical.as_bytes());
+    let hash_32 = hasher.finalize();
+
+    // Pad to 64 bytes with zeros
+    let mut output = [0u8; 64];
+    output[..32].copy_from_slice(&hash_32);
+    // Remaining 32 bytes stay as zeros
+
+    Ok(output)
 }
 
 /// Canonicalize JSON string for deterministic hashing

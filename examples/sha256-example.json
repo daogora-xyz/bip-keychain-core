@@ -1,0 +1,11 @@
+{
+  "schema_type": "dns",
+  "entity": {
+    "fqdn": "backup.example.com"
+  },
+  "derivation_config": {
+    "hash_function": "sha256",
+    "hardened": true
+  },
+  "purpose": "Backup server SSH key (SHA-256 for legacy system compatibility)"
+}
