@@ -63,18 +63,29 @@ fn hmac_sha512(entity_json: &str, parent_entropy: &[u8]) -> Result<[u8; 64]> {
 }
 
 /// BLAKE2b implementation (Blockchain Commons)
+///
+/// Uses libsodium's BLAKE2b-512 implementation via the alkali crate for
+/// compatibility with Blockchain Commons tooling. BLAKE2b is faster than
+/// SHA-512 while providing equivalent security (512-bit output).
+///
+/// Note: This implementation does NOT use parent entropy as BLAKE2b is used
+/// as a pure hash function (not keyed hash like HMAC-SHA-512).
 fn blake2b_hash(entity_json: &str) -> Result<[u8; 64]> {
     use alkali::hash::generic;
 
     // Canonicalize JSON for deterministic hashing
+    // For large entities, this allocates a new string. For pre-canonicalized
+    // inputs, this is a small overhead but ensures correctness.
     let canonical = canonicalize_json(entity_json)?;
 
     // BLAKE2b-512 hash (64 bytes) using libsodium via alkali
-    // Blockchain Commons uses libsodium's implementation
+    // Blockchain Commons uses libsodium's implementation for consistency
+    // across their ecosystem (Gordian Envelope, etc.)
     let hash = generic::hash(canonical.as_bytes())
-        .map_err(|e| BipKeychainError::HashError(format!("BLAKE2b error: {:?}", e)))?;
+        .map_err(|e| BipKeychainError::HashError(format!("BLAKE2b hashing failed: {:?}", e)))?;
 
     // Convert to fixed-size array
+    // alkali returns a variable-length slice, we need exactly 64 bytes
     let mut output = [0u8; 64];
     output.copy_from_slice(hash.as_ref());
 

@@ -14,19 +14,19 @@
 //! ```
 
 // Module declarations
-pub mod entity;
+// pub mod entity;          // TODO: Implement in Phase 2
 pub mod hash;
-pub mod derivation;
-pub mod bip32_wrapper;
-pub mod output;
+// pub mod derivation;      // TODO: Implement in Phase 2
+// pub mod bip32_wrapper;   // TODO: Implement in Phase 2
+// pub mod output;          // TODO: Implement in Phase 2
 pub mod error;
 
 // Re-exports for convenience
-pub use entity::{Entity, KeyDerivation};
+// pub use entity::{Entity, KeyDerivation};
 pub use hash::{HashFunction, hash_entity};
-pub use derivation::derive_key_from_entity;
-pub use bip32_wrapper::Keychain;
-pub use output::{OutputFormat, format_key};
+// pub use derivation::derive_key_from_entity;
+// pub use bip32_wrapper::Keychain;
+// pub use output::{OutputFormat, format_key};
 pub use error::BipKeychainError;
 
 // Also expose hash module for tests
