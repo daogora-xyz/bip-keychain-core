@@ -1,0 +1,20 @@
+{
+  "schema_type": "dns",
+  "entity": {
+    "name": "staging.api.example.com",
+    "environment": "staging",
+    "zone": "example.com",
+    "service": "api",
+    "datacenter": "us-east-1"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Staging API server SSH access key",
+  "metadata": {
+    "tier": "staging",
+    "critical": false,
+    "rotation_policy": "180-days"
+  }
+}

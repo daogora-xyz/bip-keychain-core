@@ -1,0 +1,20 @@
+{
+  "schema_type": "dns",
+  "entity": {
+    "name": "prod.api.example.com",
+    "environment": "production",
+    "zone": "example.com",
+    "service": "api",
+    "datacenter": "us-east-1"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Production API server SSH access key",
+  "metadata": {
+    "tier": "production",
+    "critical": true,
+    "rotation_policy": "90-days"
+  }
+}

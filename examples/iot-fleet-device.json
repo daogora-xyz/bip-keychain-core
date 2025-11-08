@@ -1,0 +1,26 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "Thing",
+    "identifier": "device-sensor-temp-001",
+    "name": "Temperature Sensor #001",
+    "manufacturer": "ACME IoT Corp",
+    "model": "TempSense Pro",
+    "serialNumber": "TS-001-2025-11-08",
+    "location": {
+      "@type": "Place",
+      "name": "Building A - Floor 3 - Room 301"
+    }
+  },
+  "derivation_config": {
+    "hash_function": "blake2b",
+    "hardened": true
+  },
+  "purpose": "IoT device attestation and secure communication key",
+  "metadata": {
+    "device_type": "temperature_sensor",
+    "deployment_date": "2025-11-08",
+    "firmware_version": "2.1.0",
+    "use_case": "iot_fleet_management"
+  }
+}

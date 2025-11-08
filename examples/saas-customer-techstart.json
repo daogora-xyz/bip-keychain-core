@@ -1,0 +1,23 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "Organization",
+    "identifier": "customer-techstart-inc",
+    "name": "TechStart Inc",
+    "alternateName": "techstart",
+    "legalName": "TechStart Incorporated",
+    "taxID": "98-7654321",
+    "foundingDate": "2023-06-01"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Multi-tenant SaaS customer encryption key (TechStart)",
+  "metadata": {
+    "customer_tier": "startup",
+    "customer_id": "cust_042",
+    "onboarding_date": "2025-06-01",
+    "use_case": "saas_data_isolation"
+  }
+}

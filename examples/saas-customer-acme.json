@@ -1,0 +1,23 @@
+{
+  "schema_type": "schema_org",
+  "entity": {
+    "@type": "Organization",
+    "identifier": "customer-acme-corp",
+    "name": "ACME Corporation",
+    "alternateName": "acme-corp",
+    "legalName": "ACME Corporation Inc.",
+    "taxID": "12-3456789",
+    "foundingDate": "2020-01-15"
+  },
+  "derivation_config": {
+    "hash_function": "hmac_sha512",
+    "hardened": true
+  },
+  "purpose": "Multi-tenant SaaS customer encryption key (ACME Corp)",
+  "metadata": {
+    "customer_tier": "enterprise",
+    "customer_id": "cust_001",
+    "onboarding_date": "2025-01-15",
+    "use_case": "saas_data_isolation"
+  }
+}
