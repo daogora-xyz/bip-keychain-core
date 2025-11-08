@@ -17,7 +17,7 @@ bip39 = "2.0"
 # Crypto - Multi-hash support
 hmac = "0.12"
 sha2 = "0.10"
-alkali = "0.4"  # BLAKE2b (Blockchain Commons compatibility)
+alkali = "0.3.0"  # BLAKE2b (Blockchain Commons compatibility)
 ed25519-dalek = "2.0"  # Ed25519 signatures and keypairs
 base64 = "0.21"  # Base64 encoding for SSH keys
 

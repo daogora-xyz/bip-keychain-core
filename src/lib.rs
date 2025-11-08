@@ -29,9 +29,6 @@ pub use bip32_wrapper::{Keychain, DerivedKey};
 pub use output::{OutputFormat, Ed25519Keypair, format_key};
 pub use error::BipKeychainError;
 
-// Also expose hash module for tests
-pub use hash;
-
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

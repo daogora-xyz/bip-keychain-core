@@ -61,9 +61,10 @@ impl Keychain {
     pub fn derive_bip_keychain_path(&self, entity_index: u32) -> Result<DerivedKey> {
         // Build derivation path: m/83696968'/67797668'/{entity_index}'
         // Note: bip32 crate uses hardened indices by adding 2^31
-        let hardened_bip85 = BIP85_APP + (1 << 31);
-        let hardened_bipkeychain = BIPKEYCHAIN_APP + (1 << 31);
-        let hardened_index = entity_index + (1 << 31);
+        // We use wrapping_add to prevent overflow when entity_index is large
+        let hardened_bip85 = BIP85_APP.wrapping_add(1 << 31);
+        let hardened_bipkeychain = BIPKEYCHAIN_APP.wrapping_add(1 << 31);
+        let hardened_index = entity_index.wrapping_add(1 << 31);
 
         // Derive step by step
         // m/83696968'

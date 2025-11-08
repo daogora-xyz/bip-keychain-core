@@ -81,13 +81,10 @@ fn blake2b_hash(entity_json: &str) -> Result<[u8; 64]> {
     // BLAKE2b-512 hash (64 bytes) using libsodium via alkali
     // Blockchain Commons uses libsodium's implementation for consistency
     // across their ecosystem (Gordian Envelope, etc.)
-    let hash = generic::hash(canonical.as_bytes())
-        .map_err(|e| BipKeychainError::HashError(format!("BLAKE2b hashing failed: {:?}", e)))?;
-
-    // Convert to fixed-size array
-    // alkali returns a variable-length slice, we need exactly 64 bytes
+    // Use hash_custom to specify 64-byte output (default is 32 bytes)
     let mut output = [0u8; 64];
-    output.copy_from_slice(hash.as_ref());
+    generic::hash_custom(canonical.as_bytes(), None, &mut output)
+        .map_err(|e| BipKeychainError::HashError(format!("BLAKE2b hashing failed: {:?}", e)))?;
 
     Ok(output)
 }
