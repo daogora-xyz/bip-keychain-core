@@ -20,6 +20,7 @@ sha2 = "0.10"
 alkali = "0.3.0"  # BLAKE2b (Blockchain Commons compatibility)
 ed25519-dalek = "2.0"  # Ed25519 signatures and keypairs
 base64 = "0.21"  # Base64 encoding for SSH keys
+getrandom = "0.2"  # Secure random number generation for seed generation
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

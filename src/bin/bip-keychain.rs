@@ -153,18 +153,72 @@ fn derive_command(
     Ok(())
 }
 
-fn generate_seed_command(_words: usize) -> Result<()> {
-    // For now, we'll skip the generate-seed command and focus on derive
-    // The bip39 crate API varies by version, and we want to focus on the core functionality
-    anyhow::bail!(
-        "generate-seed command not yet implemented.\n\
-         \n\
-         For now, you can generate a seed phrase using any BIP-39 compatible tool:\n\
-         - https://iancoleman.io/bip39/ (offline use recommended)\n\
-         - `bitcoin-cli` with `-named createwallet`\n\
-         - Hardware wallets (Ledger, Trezor, etc.)\n\
-         \n\
-         For testing, you can use the standard test mnemonic:\n\
-         abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    )
+fn generate_seed_command(words: usize) -> Result<()> {
+    use bip39::Mnemonic;
+
+    // Validate word count and calculate entropy size
+    // BIP-39 spec: each word encodes 11 bits
+    // Total bits = words * 11 = entropy bits + checksum bits
+    let entropy_bytes = match words {
+        12 => 16,  // 128 bits entropy + 4 bits checksum = 132 bits / 11 = 12 words
+        15 => 20,  // 160 bits entropy + 5 bits checksum = 165 bits / 11 = 15 words
+        18 => 24,  // 192 bits entropy + 6 bits checksum = 198 bits / 11 = 18 words
+        21 => 28,  // 224 bits entropy + 7 bits checksum = 231 bits / 11 = 21 words
+        24 => 32,  // 256 bits entropy + 8 bits checksum = 264 bits / 11 = 24 words
+        _ => anyhow::bail!(
+            "Invalid word count: {}\n\
+             \n\
+             Word count must be one of: 12, 15, 18, 21, or 24\n\
+             \n\
+             Recommended:\n\
+             - 24 words: Maximum security (256 bits entropy)\n\
+             - 12 words: Good security, easier to write down (128 bits entropy)",
+            words
+        ),
+    };
+
+    // Generate cryptographically secure random entropy
+    // Uses getrandom crate which uses OS-provided CSPRNG (ChaCha20, /dev/urandom, etc.)
+    let mut entropy = vec![0u8; entropy_bytes];
+    getrandom::getrandom(&mut entropy)
+        .context("Failed to generate secure random entropy.\n\
+                  This usually indicates a problem with the system's random number generator.")?;
+
+    // Create mnemonic from entropy
+    let mnemonic = Mnemonic::from_entropy(&entropy)
+        .context("Failed to generate mnemonic from entropy")?;
+
+    // Display the mnemonic
+    println!("{}", mnemonic);
+
+    // Print security warnings to stderr so they don't interfere with piping the mnemonic
+    eprintln!();
+    eprintln!("⚠️  SECURITY WARNING - READ CAREFULLY:");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+    eprintln!("This seed phrase is the MASTER KEY to all derived keys.");
+    eprintln!();
+    eprintln!("DO:");
+    eprintln!("  ✓ Write it down on paper immediately");
+    eprintln!("  ✓ Store in a secure location (fireproof safe, safety deposit box)");
+    eprintln!("  ✓ Consider making multiple copies in different secure locations");
+    eprintln!("  ✓ Verify you wrote it correctly by re-reading");
+    eprintln!();
+    eprintln!("DO NOT:");
+    eprintln!("  ✗ Store digitally (no screenshots, photos, or files)");
+    eprintln!("  ✗ Share with anyone");
+    eprintln!("  ✗ Send via email, messaging, or cloud storage");
+    eprintln!("  ✗ Enter into any website or application (except wallet recovery)");
+    eprintln!();
+    eprintln!("LOSS = PERMANENT:");
+    eprintln!("  • If you lose this seed phrase, you CANNOT recover your keys");
+    eprintln!("  • If someone else gets this phrase, they can steal ALL your keys");
+    eprintln!("  • There is NO password reset or customer support");
+    eprintln!();
+    eprintln!("For advanced backup, consider Shamir's Secret Sharing (SSKR):");
+    eprintln!("  https://github.com/BlockchainCommons/bc-sskr");
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    Ok(())
 }
