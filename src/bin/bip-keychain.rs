@@ -153,7 +153,7 @@ fn derive_command(
     Ok(())
 }
 
-fn generate_seed_command(words: usize) -> Result<()> {
+fn generate_seed_command(_words: usize) -> Result<()> {
     // For now, we'll skip the generate-seed command and focus on derive
     // The bip39 crate API varies by version, and we want to focus on the core functionality
     anyhow::bail!(

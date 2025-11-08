@@ -4,7 +4,7 @@
 //! Derives keys at the path: m/83696968'/67797668'/{index}'
 
 use crate::error::{BipKeychainError, Result};
-use bip32::{DerivationPath, ExtendedKey, XPrv};
+use bip32::XPrv;
 use bip39::Mnemonic;
 
 /// BIP-Keychain path constants
