@@ -169,45 +169,43 @@ See [PROJECT-STATUS.md](PROJECT-STATUS.md) for security considerations.
 ### Using Nix (Recommended)
 
 ```bash
-# Enter development shell (includes Rust, cargo tools, libsodium)
+# Enter development shell (includes Rust, cargo tools, libsodium, just)
 nix develop
 
 # Or use direnv for automatic shell loading
 echo "use flake" > .envrc
 direnv allow
 
-# Inside the dev shell:
-cargo build
-cargo test
-cargo run -- derive examples/person-identity.json
+# Inside the dev shell, use just for common tasks:
+just              # Show all available commands
+just dev          # Quick dev cycle (format, build, test)
+just derive-person # Derive key from person-identity example
+just ci           # Run all CI checks
 
-# Run checks (tests, clippy, fmt)
+# Or run Nix checks directly:
 nix flake check
 ```
 
 ### Traditional Cargo Workflow
 
 ```bash
-# Build
-cargo build
+# Option A: Use just (command runner - install from https://github.com/casey/just)
+just              # Show all commands
+just build        # Build the project
+just test         # Run all tests
+just dev          # Format, build, and test
 
-# Run tests (50 tests)
-cargo test
-
-# Run specific test
-cargo test test_hmac_sha512
-
-# Build release binary
-cargo build --release
-
-# Run CLI
-cargo run -- derive entity.json
+# Option B: Direct cargo commands
+cargo build       # Build
+cargo test        # Run tests (50 tests)
+cargo test test_hmac_sha512  # Run specific test
+cargo build --release        # Build release binary
+cargo run -- derive entity.json  # Run CLI
 ```
 
-**Note**: If not using Nix, you must install libsodium manually:
-- macOS: `brew install libsodium`
-- Ubuntu/Debian: `apt install libsodium-dev`
-- Arch: `pacman -S libsodium`
+**Note**: If not using Nix, you must install dependencies manually:
+- **libsodium** (required): `brew install libsodium` (macOS), `apt install libsodium-dev` (Ubuntu/Debian), `pacman -S libsodium` (Arch)
+- **just** (optional, for convenience): `cargo install just` or see https://github.com/casey/just
 
 See [CLAUDE.md](CLAUDE.md) for development workflow and architecture details.
 
