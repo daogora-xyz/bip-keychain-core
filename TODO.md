@@ -25,23 +25,15 @@ This TODO tracks remaining work for BIP-Keychain Core. The core MVP is **complet
 - [x] **Examples** - 11 entity examples, 6 automation scripts
 - [x] **alkali 0.3.0 Compatibility** - Fixed BLAKE2b-512 hash size issue (commit: 315186e)
 - [x] **Overflow Safety** - Fixed BIP-32 hardened index overflow (commit: 315186e)
+- [x] **Compiler Warnings Fixed** - Clean build with zero warnings (commit: eabee03)
+- [x] **generate-seed Command** - Secure BIP-39 mnemonic generation (commit: 1b3e110)
 
 **Latest Commits:**
+- `1b3e110` - feat: implement generate-seed command with BIP-39
+- `eabee03` - chore: fix compiler warnings for clean build
+- `22a73e8` - docs: replace spec/tasks.md with updated TODO.md
 - `315186e` - fix: resolve alkali 0.3.0 compatibility and overflow issues
 - `837661a` - feat: add GPG signing, comprehensive examples, and production automation
-- `44a6a75` - docs: add comprehensive project status document
-- `9107ff5` - refactor: production hardening with better errors and property tests
-- `4e4116c` - feat: implement SHA-256 hash function
-
----
-
-## 🚧 In Progress
-
-### Code Quality
-- [ ] **Fix compiler warnings** (Priority: High)
-  - [ ] Remove unused imports in `src/bip32_wrapper.rs` (DerivationPath, ExtendedKey)
-  - [ ] Fix unused variable in `src/bin/bip-keychain.rs` (words parameter)
-  - Run: `cargo fix --lib --bin bip-keychain --allow-dirty`
 
 ---
 
@@ -49,36 +41,7 @@ This TODO tracks remaining work for BIP-Keychain Core. The core MVP is **complet
 
 ### High Priority - Core Features
 
-#### 1. Implement `generate-seed` Command
-**Status**: Stubbed (returns error)
-**Effort**: 2-4 hours
-**Files**: `src/bin/bip-keychain.rs`
-
-Currently the command exists but isn't implemented:
-```rust
-fn generate_seed_command(words: usize) -> Result<()> {
-    anyhow::bail!("generate-seed command not yet implemented...")
-}
-```
-
-**Tasks:**
-- [ ] Implement BIP-39 mnemonic generation (12/15/18/21/24 word support)
-- [ ] Use `bip39::Mnemonic::generate()` with secure randomness
-- [ ] Add word count validation
-- [ ] Add `--word-count` CLI flag (default: 24)
-- [ ] Print mnemonic to stdout with security warning
-- [ ] Add tests for word count validation
-- [ ] Update CLI-USAGE.md with examples
-
-**Acceptance Criteria:**
-- User can run `bip-keychain generate-seed --word-count 24`
-- Output includes security warning about seed phrase storage
-- Different invocations produce different seeds (using secure RNG)
-- Tests verify word count options work correctly
-
----
-
-#### 2. Batch Keychain Processing
+#### 1. Batch Keychain Processing
 **Status**: Not implemented
 **Effort**: 4-8 hours
 **Files**: `src/bin/bip-keychain.rs`, `src/derivation.rs`
@@ -115,7 +78,7 @@ Currently can only derive one key at a time. Need support for:
 
 ### Medium Priority - Output Formats
 
-#### 3. OpenSSH Private Key Format
+#### 2. OpenSSH Private Key Format
 **Status**: Not implemented (can output private key as hex)
 **Effort**: 6-12 hours
 **Files**: `src/output.rs`
@@ -145,7 +108,7 @@ This is lower priority because private keys should ideally never be written to d
 
 ### Medium Priority - Production Readiness
 
-#### 4. CI/CD Pipeline
+#### 3. CI/CD Pipeline
 **Status**: Not started
 **Effort**: 4-6 hours
 **Files**: `.github/workflows/ci.yml` (new)
@@ -169,7 +132,7 @@ This is lower priority because private keys should ideally never be written to d
 
 ---
 
-#### 5. Publish to crates.io
+#### 4. Publish to crates.io
 **Status**: Not started
 **Effort**: 2-4 hours
 **Prerequisites**: CI/CD pipeline, clean warnings
@@ -194,7 +157,7 @@ This is lower priority because private keys should ideally never be written to d
 
 ---
 
-#### 6. Performance Benchmarks
+#### 5. Performance Benchmarks
 **Status**: Claims met but not measured
 **Effort**: 3-5 hours
 **Files**: `benches/derivation_bench.rs` (new)
@@ -224,7 +187,7 @@ Need to actually measure and track these.
 
 ### Lower Priority - Quality of Life
 
-#### 7. Improved Error Messages
+#### 6. Improved Error Messages
 **Status**: Good but could be better
 **Effort**: 2-3 hours
 
@@ -237,7 +200,7 @@ Need to actually measure and track these.
 
 ---
 
-#### 8. Shell Completions
+#### 7. Shell Completions
 **Status**: Not implemented
 **Effort**: 1-2 hours
 **Files**: `src/bin/bip-keychain.rs`
@@ -254,7 +217,7 @@ Need to actually measure and track these.
 
 ---
 
-#### 9. Key Metadata Cache (Optional)
+#### 8. Key Metadata Cache (Optional)
 **Status**: Not started
 **Effort**: 6-10 hours
 
@@ -285,6 +248,163 @@ For users deriving many keys, cache entity hash → index mapping to avoid re-ha
 - Non-hardened derivation support (for PKI use cases)
 - Custom derivation paths
 - BIP-44/49/84 compatibility mode
+
+#### Blockchain Commons Ecosystem Integration
+
+**Status**: Architecture supports this, implementation deferred
+**Priority**: v0.2.0-0.3.0
+**Effort**: Medium (optional feature flags)
+
+Add full support for Blockchain Commons specifications:
+
+##### Gordian Envelope Support
+
+**Why**: Semantic, privacy-preserving data structures that align perfectly with BIP-Keychain's philosophy.
+
+**Implementation Path**:
+
+```toml
+# Cargo.toml
+[dependencies.bc-envelope]
+version = "0.x"
+optional = true
+
+[dependencies.bc-components]
+version = "0.x"
+optional = true
+
+[dependencies.dcbor]
+version = "0.x"
+optional = true
+
+[features]
+default = []
+gordian = ["bc-envelope", "bc-components", "dcbor"]
+```
+
+**Code Changes** (minimal, architecture already supports this):
+
+```rust
+// src/entity.rs - Add to existing SchemaType enum
+pub enum SchemaType {
+    SchemaOrg,
+    DID,
+    GordianEnvelope,  // Already planned!
+    X509DN,
+    // ...
+}
+
+#[cfg(feature = "gordian")]
+use bc_envelope::Envelope;
+
+impl KeyDerivation {
+    pub fn from_json(json_str: &str) -> Result<Self> {
+        match schema_type {
+            "GordianEnvelope" => {
+                #[cfg(feature = "gordian")]
+                {
+                    let envelope = Envelope::from_ur(envelope_data)?;
+                    let canonical = envelope.subject().to_cbor_data();
+                    // Rest of derivation works unchanged!
+                }
+                #[cfg(not(feature = "gordian"))]
+                {
+                    Err("Gordian Envelope requires 'gordian' feature")
+                }
+            }
+            // ... other types
+        }
+    }
+}
+```
+
+**Key Insight**: Our hash-agnostic derivation already works!
+- Envelope → CBOR bytes → BLAKE2b hash → u32 index → BIP-32 key
+- No changes needed to `derivation.rs`, `hash.rs`, or `bip32_wrapper.rs`
+
+**Usage Example**:
+```json
+{
+  "schemaType": "GordianEnvelope",
+  "envelope": "ur:envelope/lftpsptpcslgaotptpsptpcsoyek...",
+  "derivation": {
+    "hashFunction": "BLAKE2b"
+  }
+}
+```
+
+```bash
+# Install with Gordian support
+cargo install bip-keychain --features gordian
+
+# Derive from Gordian Envelope entity
+bip-keychain derive identity-envelope.json
+```
+
+##### SSKR (Shamir's Secret Sharing) for Seed Backup
+
+**Why**: Industry-standard seed backup with threshold recovery.
+
+```toml
+[dependencies.sskr]
+version = "0.x"
+optional = true
+
+[features]
+sskr = ["bc-crypto", "sskr"]
+```
+
+**Usage**:
+```bash
+# Generate seed with SSKR backup (2-of-3 shares)
+bip-keychain generate-seed --sskr --threshold 2 --shares 3
+
+# Outputs 3 SSKR shares instead of single mnemonic
+# User stores separately, needs any 2 to recover
+```
+
+**Benefits**:
+- Geographic distribution (shares in different locations)
+- Threshold security (M-of-N recovery)
+- No single point of failure
+- Compatible with Gordian ecosystem
+
+##### UR (Uniform Resources) Encoding
+
+**Why**: QR-friendly encoding for air-gapped workflows.
+
+- Export entities as UR format for QR codes
+- Import entities from UR-encoded QR scans
+- Multipart UR for large payloads
+- Compatible with Gordian Seed Tool, Gordian Coordinator
+
+**Workflow**:
+```bash
+# Export entity as UR for QR display
+bip-keychain export entity.json --format ur
+
+# Derive from UR-encoded entity (scanned QR)
+bip-keychain derive --ur <ur-string>
+```
+
+##### Blockchain Commons Compatibility Matrix
+
+| Feature | Version | Dependencies | Effort |
+|---------|---------|--------------|--------|
+| Gordian Envelope parsing | v0.2.0 | bc-envelope, dcbor | Medium |
+| SSKR seed backup | v0.2.0 | sskr, bc-crypto | Low |
+| UR encoding | v0.2.0 | bc-ur | Low |
+| Integration tests with seedtool-cli | v0.2.0 | dev dependency | Low |
+| Interop with Gordian Coordinator | v0.3.0 | Network stack | High |
+
+**Design Philosophy Alignment**:
+- ✅ Privacy-first (elision, holder-defined)
+- ✅ Semantic entities (human-readable)
+- ✅ Deterministic (same entity → same key)
+- ✅ Open standards (no vendor lock-in)
+- ✅ Composable tools (Unix philosophy)
+
+**Reference**: Our BLAKE2b implementation already uses libsodium (via alkali) for Blockchain Commons compatibility.
 
 #### WebAssembly Build
 - Compile to WASM for browser use
@@ -323,12 +443,12 @@ These are explicitly **not** planned:
 ### v0.1.0 (Current - MVP) ✅
 Core functionality complete, ready for use
 
-### v0.1.1 (Next - Polish)
-- Fix compiler warnings
-- Implement `generate-seed` command
-- Add CI/CD pipeline
-- Publish to crates.io
-- **Target: 1-2 weeks**
+### v0.1.1 (In Progress - Polish)
+- [x] Fix compiler warnings
+- [x] Implement `generate-seed` command
+- [ ] Add CI/CD pipeline
+- [ ] Publish to crates.io
+- **Target: 1 week**
 
 ### v0.2.0 (Enhanced)
 - Batch keychain processing
