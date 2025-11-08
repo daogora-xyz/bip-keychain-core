@@ -1,6 +1,10 @@
 # BIP-Keychain Core
 
-Exploration and implementation of semantic hierarchical key derivation based on [BIP-Keychain](https://github.com/akarve/bip-keychain).
+[![CI](https://github.com/daogora-xyz/bip-keychain-core/workflows/CI/badge.svg)](https://github.com/daogora-xyz/bip-keychain-core/actions)
+[![License](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg)](LICENSE)
+[![Rust Version](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
+
+**Production-ready Rust implementation of semantic hierarchical key derivation based on [BIP-Keychain](https://github.com/akarve/bip-keychain).**
 
 ## What is BIP-Keychain?
 
@@ -32,12 +36,133 @@ BIP-Keychain is a draft Bitcoin Improvement Proposal that extends BIP-85 with se
 
 ## Status
 
-**Early Research Phase** - This repository is for exploration and experimentation.
+**Production-Ready MVP (v0.1.0)** ✅
 
-The original BIP-Keychain proposal is in draft status. This project aims to:
-- Provide reference implementations
-- Test real-world use cases
-- Contribute feedback to the BIP process
+Core functionality complete and tested:
+- ✅ Multi-hash support (HMAC-SHA-512, BLAKE2b, SHA-256)
+- ✅ BIP-32 hierarchical key derivation
+- ✅ Ed25519 keypair generation
+- ✅ SSH & GPG output formats
+- ✅ CLI tool with secure seed generation
+- ✅ 50 tests passing (unit, integration, property-based)
+- ✅ Comprehensive documentation
+
+See [PROJECT-STATUS.md](PROJECT-STATUS.md) for details.
+
+## Quick Start
+
+```bash
+# Install
+cargo install --path .
+
+# Generate a seed phrase
+bip-keychain generate-seed --words 24
+
+# Set your seed (use the one you just generated)
+export BIP_KEYCHAIN_SEED="your twelve word seed phrase here..."
+
+# Derive an SSH key from a semantic entity
+bip-keychain derive examples/github-repo.json
+
+# Output: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... github-repo
+```
+
+All your keys are reproducible from a single seed phrase!
+
+## Documentation
+
+- **[CLI-USAGE.md](CLI-USAGE.md)** - Complete CLI reference and examples
+- **[SSH-KEYS-GUIDE.md](SSH-KEYS-GUIDE.md)** - Using BIP-Keychain for SSH authentication
+- **[GIT-SIGNING-GUIDE.md](GIT-SIGNING-GUIDE.md)** - Git commit signing with GPG
+- **[NICKEL-WORKFLOW.md](NICKEL-WORKFLOW.md)** - Type-safe entity definitions
+- **[TODO.md](TODO.md)** - Roadmap and future enhancements
+- **[CLAUDE.md](CLAUDE.md)** - Development guide for contributors
+
+## Features
+
+### Multi-Schema Support
+
+Derive keys from semantic entities in multiple formats:
+- **schema.org** (JSON-LD) - Person, Organization, SoftwareSourceCode
+- **W3C DIDs** - Decentralized Identifiers
+- **Blockchain Commons Gordian Envelope** (planned - see TODO.md)
+- **X.509 Distinguished Names** - TLS/SSL certificates
+- **DNS/FQDN** - Server infrastructure
+- **Custom schemas** - Your own semantic structures
+
+### Multi-Hash Functions
+
+Choose the hash function for your ecosystem:
+- **HMAC-SHA-512** - BIP-85 standard (default)
+- **BLAKE2b** - Blockchain Commons compatibility (via libsodium)
+- **SHA-256** - Alternative for specific use cases
+
+### Output Formats
+
+Generate keys in multiple formats:
+- **SSH public keys** (OpenSSH format)
+- **GPG public keys** (for Git signing)
+- **Raw hex** (seed, public key, private key)
+- **JSON** (with metadata)
+
+## Architecture
+
+```
+JSON Entity → Canonicalize → Hash (HMAC-SHA-512/BLAKE2b/SHA-256)
+  → Extract first 4 bytes as u32 → BIP-32 derive at m/83696968'/67797668'/{index}'
+  → Generate Ed25519 keypair → Format output (SSH/GPG/hex/JSON)
+```
+
+**Key Innovation**: Separation of path keys from path values - if a hot master is compromised, only derivation paths (metadata) are exposed, not the actual secrets.
+
+## Real-World Use Cases
+
+- ✅ **SSH Server Access** - Unique key per server, organized by DNS name
+- ✅ **GitHub Deploy Keys** - Per-repository keys, reproducible across teams
+- ✅ **Git Commit Signing** - GPG keys for verified commits
+- ✅ **Personal Identity** - DID-based keys, consistent across platforms
+- ✅ **Infrastructure as Code** - Terraform/Ansible integration
+- 🚧 **Email Signing** - S/MIME, PGP (future)
+- 🚧 **Code Signing** - Software releases (future)
+
+See [examples/](examples/) for 11 entity examples and 6 automation scripts.
+
+## Security
+
+### What's Secure
+- ✅ Seed phrase via environment variable (not CLI args)
+- ✅ Cryptographically secure hash functions
+- ✅ Standard BIP-32/39 implementations
+- ✅ Test vectors from official sources (NIST, RFC 4231, BLAKE2)
+- ✅ No key logging or persistence
+
+### User Responsibilities
+- ⚠️ Secure seed phrase storage (hardware wallet recommended)
+- ⚠️ Private key handling (use ssh-agent, don't write to disk)
+- ⚠️ Regular key rotation (generate new entities)
+
+See [PROJECT-STATUS.md](PROJECT-STATUS.md) for security considerations.
+
+## Development
+
+```bash
+# Build
+cargo build
+
+# Run tests (50 tests)
+cargo test
+
+# Run specific test
+cargo test test_hmac_sha512
+
+# Build release binary
+cargo build --release
+
+# Run CLI
+cargo run -- derive entity.json
+```
+
+See [CLAUDE.md](CLAUDE.md) for development workflow and architecture details.
 
 ## Repository Structure
 
@@ -72,13 +197,14 @@ repo_path = {
 
 ## Contributing
 
-This is an exploratory research project. Contributions welcome:
+Contributions welcome! Priority areas:
+- CI/CD improvements
+- Additional entity type examples
+- Security audits
+- Performance benchmarks
+- Integration with other tools
 
-- Implementations in various languages
-- Use case documentation
-- Security analysis
-- Integration examples
-- Test vectors
+See [TODO.md](TODO.md) for planned features and [CLAUDE.md](CLAUDE.md) for development workflow.
 
 ## License
 
