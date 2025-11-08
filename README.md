@@ -49,10 +49,31 @@ Core functionality complete and tested:
 
 See [PROJECT-STATUS.md](PROJECT-STATUS.md) for details.
 
-## Quick Start
+## Installation
+
+### Option 1: Nix Flake (Recommended)
+
+If you use Nix, this is the easiest and most reproducible method:
 
 ```bash
-# Install
+# Try it without installing
+nix run github:daogora-xyz/bip-keychain-core -- --help
+
+# Install to your profile
+nix profile install github:daogora-xyz/bip-keychain-core
+
+# Or add to your NixOS/home-manager configuration
+# flake.nix:
+# inputs.bip-keychain.url = "github:daogora-xyz/bip-keychain-core";
+# environment.systemPackages = [ inputs.bip-keychain.packages.${system}.default ];
+```
+
+### Option 2: Cargo (Traditional Rust)
+
+```bash
+# Install from source
+git clone https://github.com/daogora-xyz/bip-keychain-core
+cd bip-keychain-core
 cargo install --path .
 
 # Generate a seed phrase
@@ -145,6 +166,27 @@ See [PROJECT-STATUS.md](PROJECT-STATUS.md) for security considerations.
 
 ## Development
 
+### Using Nix (Recommended)
+
+```bash
+# Enter development shell (includes Rust, cargo tools, libsodium)
+nix develop
+
+# Or use direnv for automatic shell loading
+echo "use flake" > .envrc
+direnv allow
+
+# Inside the dev shell:
+cargo build
+cargo test
+cargo run -- derive examples/person-identity.json
+
+# Run checks (tests, clippy, fmt)
+nix flake check
+```
+
+### Traditional Cargo Workflow
+
 ```bash
 # Build
 cargo build
@@ -161,6 +203,11 @@ cargo build --release
 # Run CLI
 cargo run -- derive entity.json
 ```
+
+**Note**: If not using Nix, you must install libsodium manually:
+- macOS: `brew install libsodium`
+- Ubuntu/Debian: `apt install libsodium-dev`
+- Arch: `pacman -S libsodium`
 
 See [CLAUDE.md](CLAUDE.md) for development workflow and architecture details.
 
