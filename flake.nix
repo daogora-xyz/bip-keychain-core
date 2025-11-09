@@ -116,6 +116,9 @@
           LIBSODIUM_LIB_DIR = "${pkgs.libsodium}/lib";
           LIBSODIUM_INCLUDE_DIR = "${pkgs.libsodium}/include";
 
+          # Development-only test seed phrase (DO NOT use in production!)
+          BIP_KEYCHAIN_SEED = "test test test test test test test test test test test junk";
+
           # Helpful shell hook
           shellHook = ''
             echo "🔐 BIP-Keychain development environment"
@@ -123,6 +126,9 @@
             echo "Rust version: $(rustc --version)"
             echo "Cargo version: $(cargo --version)"
             echo "libsodium: ${pkgs.libsodium.version}"
+            echo ""
+            echo "⚠️  Test seed phrase loaded (BIP_KEYCHAIN_SEED)"
+            echo "    DO NOT use this seed for real keys!"
             echo ""
             echo "Available commands:"
             echo "  cargo build          - Build the project"

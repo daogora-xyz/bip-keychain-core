@@ -176,7 +176,14 @@ nix develop
 echo "use flake" > .envrc
 direnv allow
 
-# Inside the dev shell, use just for common tasks:
+# The dev environment automatically sets a test seed phrase:
+# BIP_KEYCHAIN_SEED="test test test test test test test test test test test junk"
+# This is a valid BIP-39 phrase commonly used for testing (DO NOT use in production!)
+
+# Inside the dev shell, you can now derive keys without setting BIP_KEYCHAIN_SEED:
+cargo run -- derive examples/person-identity.json
+
+# Or use just for common tasks:
 just              # Show all available commands
 just dev          # Quick dev cycle (format, build, test)
 just derive-person # Derive key from person-identity example
