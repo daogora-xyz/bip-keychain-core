@@ -75,7 +75,7 @@ clean:
 
 # Generate seed phrase (default: 24 words)
 generate-seed WORDS="24":
-  cargo run -- generate-seed {{WORDS}}
+  cargo run -- generate-seed --words {{WORDS}}
 
 # Derive key from example entity
 derive EXAMPLE:

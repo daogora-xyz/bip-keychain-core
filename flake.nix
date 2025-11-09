@@ -132,7 +132,7 @@
             echo "  cargo audit          - Security audit"
             echo ""
             echo "Examples:"
-            echo "  cargo run -- generate-seed 24"
+            echo "  cargo run -- generate-seed --words 24"
             echo "  cargo run -- derive examples/person-identity.json"
             echo ""
           '';
@@ -222,7 +222,7 @@
           generate-seed = {
             type = "app";
             program = pkgs.writeShellScript "generate-seed" ''
-              ${self.packages.${system}.default}/bin/bip-keychain generate-seed "''${1:-24}"
+              ${self.packages.${system}.default}/bin/bip-keychain generate-seed --words "''${1:-24}"
             '';
           };
         };
