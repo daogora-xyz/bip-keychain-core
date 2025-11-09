@@ -5,7 +5,7 @@
 //! - Uniqueness: different inputs produce different outputs (with high probability)
 //! - Stability: derived keys don't change across runs
 
-use bip_keychain::{derive_key_from_entity, Keychain, KeyDerivation, HashFunction, hash_entity};
+use bip_keychain::{derive_key_from_entity, hash_entity, HashFunction, KeyDerivation, Keychain};
 use proptest::prelude::*;
 
 /// Test that identical entities produce identical keys (determinism)
@@ -44,11 +44,14 @@ fn test_uniqueness_different_names() {
     let mut keys = Vec::new();
 
     for name in &names {
-        let entity_json = format!(r#"{{
+        let entity_json = format!(
+            r#"{{
   "schema_type": "schema_org",
   "entity": {{"@type": "Person", "name": "{}"}},
   "derivation_config": {{"hash_function": "hmac_sha512", "hardened": true}}
-}}"#, name);
+}}"#,
+            name
+        );
 
         let key_deriv = KeyDerivation::from_json(&entity_json).unwrap();
         let derived = derive_key_from_entity(&keychain, &key_deriv, parent_entropy).unwrap();
@@ -102,8 +105,8 @@ fn test_different_hash_functions() {
     }
 }
 
-/// Property test: hash determinism
-/// For any input string, hashing it twice should give the same result
+// Property test: hash determinism
+// For any input string, hashing it twice should give the same result
 proptest! {
     #[test]
     fn prop_hash_determinism(input in "\\PC*") {
@@ -116,8 +119,8 @@ proptest! {
     }
 }
 
-/// Property test: different inputs produce different hashes (with high probability)
-/// This tests collision resistance
+// Property test: different inputs produce different hashes (with high probability)
+// This tests collision resistance
 proptest! {
     #[test]
     fn prop_hash_uniqueness(s1 in "\\PC{1,100}", s2 in "\\PC{1,100}") {
@@ -132,8 +135,8 @@ proptest! {
     }
 }
 
-/// Property test: derivation determinism
-/// Same mnemonic + same entity should always produce the same key
+// Property test: derivation determinism
+// Same mnemonic + same entity should always produce the same key
 proptest! {
     #[test]
     fn prop_derivation_determinism(entity_name in "[a-zA-Z0-9]{1,50}") {
@@ -156,7 +159,7 @@ proptest! {
     }
 }
 
-/// Property test: different entities produce different keys
+// Property test: different entities produce different keys
 proptest! {
     #[test]
     fn prop_entity_uniqueness(name1 in "[a-zA-Z0-9]{1,50}", name2 in "[a-zA-Z0-9]{1,50}") {
@@ -188,7 +191,7 @@ proptest! {
     }
 }
 
-/// Property test: Ed25519 keypair generation is deterministic
+// Property test: Ed25519 keypair generation is deterministic
 proptest! {
     #[test]
     fn prop_ed25519_determinism(seed_byte in any::<u8>()) {
@@ -204,7 +207,7 @@ proptest! {
     }
 }
 
-/// Property test: different seeds produce different Ed25519 keys
+// Property test: different seeds produce different Ed25519 keys
 proptest! {
     #[test]
     fn prop_ed25519_uniqueness(byte1 in any::<u8>(), byte2 in any::<u8>()) {

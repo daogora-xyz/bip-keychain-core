@@ -9,8 +9,8 @@ fn test_keychain_from_mnemonic() {
     // Test BIP-39 mnemonic (12 words)
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
-    let keychain = Keychain::from_mnemonic(mnemonic)
-        .expect("Should create keychain from valid mnemonic");
+    let keychain =
+        Keychain::from_mnemonic(mnemonic).expect("Should create keychain from valid mnemonic");
 
     // Should be able to access master key
     assert!(keychain.master_key().private_key().to_bytes().len() == 32);

@@ -63,9 +63,8 @@ impl KeyDerivation {
 
     /// Get the entity as a canonical JSON string for hashing
     pub fn entity_json(&self) -> Result<String> {
-        serde_json::to_string(&self.entity).map_err(|e| {
-            BipKeychainError::HashError(format!("Failed to serialize entity: {}", e))
-        })
+        serde_json::to_string(&self.entity)
+            .map_err(|e| BipKeychainError::HashError(format!("Failed to serialize entity: {}", e)))
     }
 }
 
@@ -86,8 +85,11 @@ mod tests {
 
         let kd = KeyDerivation::from_json(json).unwrap();
         assert_eq!(kd.schema_type, "schema_org");
-        assert_eq!(kd.derivation_config.hash_function, HashFunctionConfig::HmacSha512);
-        assert_eq!(kd.derivation_config.hardened, true);
+        assert_eq!(
+            kd.derivation_config.hash_function,
+            HashFunctionConfig::HmacSha512
+        );
+        assert!(kd.derivation_config.hardened);
     }
 
     #[test]
@@ -95,6 +97,6 @@ mod tests {
         let json = r#"{"hash_function": "blake2b", "hardened": false}"#;
         let config: DerivationConfig = serde_json::from_str(json).unwrap();
         assert_eq!(config.hash_function, HashFunctionConfig::Blake2b);
-        assert_eq!(config.hardened, false);
+        assert!(!config.hardened);
     }
 }

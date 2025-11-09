@@ -176,22 +176,14 @@ pub fn format_key(
         OutputFormat::SshPublicKey => {
             // OpenSSH public key format
             let keypair = Ed25519Keypair::from_derived_key(derived);
-            let comment = key_derivation
-                .purpose
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or("bip-keychain");
+            let comment = key_derivation.purpose.as_deref().unwrap_or("bip-keychain");
             Ok(keypair.to_ssh_public_key(Some(comment)))
         }
 
         OutputFormat::GpgPublicKey => {
             // GPG public key information
             let keypair = Ed25519Keypair::from_derived_key(derived);
-            let comment = key_derivation
-                .purpose
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or("bip-keychain");
+            let comment = key_derivation.purpose.as_deref().unwrap_or("bip-keychain");
             Ok(keypair.to_gpg_public_key(Some(comment)))
         }
 
@@ -205,7 +197,7 @@ pub fn format_key(
                 "ed25519_public_key": hex::encode(keypair.public_key_bytes()),
                 "ed25519_private_key": hex::encode(keypair.private_key_bytes()),
                 "ssh_public_key": keypair.to_ssh_public_key(
-                    key_derivation.purpose.as_ref().map(|s| s.as_str())
+                    key_derivation.purpose.as_deref()
                 ),
                 "schema_type": key_derivation.schema_type,
                 "hash_function": format!("{:?}", key_derivation.derivation_config.hash_function),

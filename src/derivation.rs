@@ -8,10 +8,10 @@
 //! 5. Return derived key
 
 use crate::{
-    entity::{KeyDerivation, HashFunctionConfig},
-    hash::{hash_entity, HashFunction},
-    bip32_wrapper::{Keychain, DerivedKey},
+    bip32_wrapper::{DerivedKey, Keychain},
+    entity::{HashFunctionConfig, KeyDerivation},
     error::{BipKeychainError, Result},
+    hash::{hash_entity, HashFunction},
 };
 
 /// Derive a key from an entity using BIP-Keychain
@@ -69,7 +69,7 @@ pub fn derive_key_from_entity(
 fn hash_to_index(hash: &[u8; 64]) -> Result<u32> {
     if hash.len() < 4 {
         return Err(BipKeychainError::HashError(
-            "Hash output too short for index extraction".to_string()
+            "Hash output too short for index extraction".to_string(),
         ));
     }
 

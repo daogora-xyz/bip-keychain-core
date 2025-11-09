@@ -2,7 +2,7 @@
 //!
 //! Tests the complete flow: Entity JSON → Hash → Index → BIP-32 Derive → Key
 
-use bip_keychain::{Keychain, KeyDerivation, HashFunction, derive_key_from_entity};
+use bip_keychain::{derive_key_from_entity, HashFunction, KeyDerivation, Keychain};
 
 #[test]
 fn test_end_to_end_derivation() {
@@ -26,12 +26,10 @@ fn test_end_to_end_derivation() {
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
     // Parse entity
-    let key_deriv = KeyDerivation::from_json(entity_json)
-        .expect("Should parse entity JSON");
+    let key_deriv = KeyDerivation::from_json(entity_json).expect("Should parse entity JSON");
 
     // Create keychain
-    let keychain = Keychain::from_mnemonic(mnemonic)
-        .expect("Should create keychain");
+    let keychain = Keychain::from_mnemonic(mnemonic).expect("Should create keychain");
 
     // Derive key
     let derived_key = derive_key_from_entity(&keychain, &key_deriv, b"parent_entropy")
@@ -142,8 +140,7 @@ fn test_manual_derivation_flow() {
   "derivation_config": {"hash_function": "hmac_sha512", "hardened": true}
 }"#;
 
-    let key_deriv = KeyDerivation::from_json(entity_json)
-        .expect("Should parse entity");
+    let key_deriv = KeyDerivation::from_json(entity_json).expect("Should parse entity");
 
     // Step 2: Hash entity
     let entity_str = key_deriv.entity_json().unwrap();
@@ -156,7 +153,12 @@ fn test_manual_derivation_flow() {
 
     // Step 3: Extract first 4 bytes as u32 index
     let index_bytes = &hash[0..4];
-    let index = u32::from_be_bytes([index_bytes[0], index_bytes[1], index_bytes[2], index_bytes[3]]);
+    let index = u32::from_be_bytes([
+        index_bytes[0],
+        index_bytes[1],
+        index_bytes[2],
+        index_bytes[3],
+    ]);
 
     // Step 4: Derive at BIP-Keychain path
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";

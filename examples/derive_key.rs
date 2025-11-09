@@ -8,7 +8,7 @@
 //!
 //! Run with: cargo run --example derive_key
 
-use bip_keychain::{Keychain, KeyDerivation, derive_key_from_entity};
+use bip_keychain::{derive_key_from_entity, KeyDerivation, Keychain};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== BIP-Keychain Derivation Example ===\n");
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Extract Ed25519 seed
     println!("Step 4: Extracting Ed25519 seed...");
     let ed25519_seed = derived_key.to_seed();
-    println!("✓ Ed25519 seed (32 bytes): {}\n", hex::encode(&ed25519_seed));
+    println!("✓ Ed25519 seed (32 bytes): {}\n", hex::encode(ed25519_seed));
 
     // Show that derivation is deterministic
     println!("Step 5: Verifying determinism...");

@@ -2,7 +2,7 @@
 //!
 //! Tests parsing of Nickel-exported JSON entities into Rust structs.
 
-use bip_keychain::{KeyDerivation, HashFunctionConfig};
+use bip_keychain::{HashFunctionConfig, KeyDerivation};
 
 #[test]
 fn test_parse_schema_org_entity() {
@@ -27,13 +27,19 @@ fn test_parse_schema_org_entity() {
   }
 }"#;
 
-    let key_derivation = KeyDerivation::from_json(json)
-        .expect("Should parse schema.org entity JSON");
+    let key_derivation =
+        KeyDerivation::from_json(json).expect("Should parse schema.org entity JSON");
 
     assert_eq!(key_derivation.schema_type, "schema_org");
-    assert_eq!(key_derivation.derivation_config.hash_function, HashFunctionConfig::HmacSha512);
-    assert_eq!(key_derivation.derivation_config.hardened, true);
-    assert_eq!(key_derivation.purpose.unwrap(), "Git commit signing key for bip-keychain-core repository");
+    assert_eq!(
+        key_derivation.derivation_config.hash_function,
+        HashFunctionConfig::HmacSha512
+    );
+    assert!(key_derivation.derivation_config.hardened);
+    assert_eq!(
+        key_derivation.purpose.unwrap(),
+        "Git commit signing key for bip-keychain-core repository"
+    );
 
     // Verify entity fields
     assert_eq!(key_derivation.entity["@type"], "SoftwareSourceCode");
@@ -56,8 +62,7 @@ fn test_parse_entity_with_minimal_fields() {
   }
 }"#;
 
-    let key_derivation = KeyDerivation::from_json(json)
-        .expect("Should parse minimal entity");
+    let key_derivation = KeyDerivation::from_json(json).expect("Should parse minimal entity");
 
     assert_eq!(key_derivation.schema_type, "schema_org");
     assert!(key_derivation.purpose.is_none());
@@ -80,10 +85,15 @@ fn test_parse_entity_with_blake2b() {
   "purpose": "Selective disclosure credentials"
 }"#;
 
-    let key_derivation = KeyDerivation::from_json(json)
-        .expect("Should parse BLAKE2b entity");
+    let key_derivation = KeyDerivation::from_json(json).expect("Should parse BLAKE2b entity");
 
-    assert_eq!(key_derivation.derivation_config.hash_function, HashFunctionConfig::Blake2b);
+    assert_eq!(
+        key_derivation.derivation_config.hash_function,
+        HashFunctionConfig::Blake2b
+    );
     assert_eq!(key_derivation.schema_type, "gordian_envelope");
-    assert_eq!(key_derivation.purpose.unwrap(), "Selective disclosure credentials");
+    assert_eq!(
+        key_derivation.purpose.unwrap(),
+        "Selective disclosure credentials"
+    );
 }

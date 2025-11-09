@@ -39,8 +39,9 @@ impl Keychain {
         let seed = mnemonic.to_seed("");
 
         // Derive master key from seed
-        let master_key = XPrv::new(&seed)
-            .map_err(|e| BipKeychainError::Bip32Error(format!("Failed to derive master key: {}", e)))?;
+        let master_key = XPrv::new(seed).map_err(|e| {
+            BipKeychainError::Bip32Error(format!("Failed to derive master key: {}", e))
+        })?;
 
         Ok(Self { master_key })
     }
@@ -68,19 +69,26 @@ impl Keychain {
 
         // Derive step by step
         // m/83696968'
-        let key_bip85 = self.master_key
+        let key_bip85 = self
+            .master_key
             .derive_child(hardened_bip85.into())
-            .map_err(|e| BipKeychainError::Bip32Error(format!("Failed to derive BIP-85 level: {}", e)))?;
+            .map_err(|e| {
+                BipKeychainError::Bip32Error(format!("Failed to derive BIP-85 level: {}", e))
+            })?;
 
         // m/83696968'/67797668'
         let key_bipkeychain = key_bip85
             .derive_child(hardened_bipkeychain.into())
-            .map_err(|e| BipKeychainError::Bip32Error(format!("Failed to derive BIP-Keychain level: {}", e)))?;
+            .map_err(|e| {
+                BipKeychainError::Bip32Error(format!("Failed to derive BIP-Keychain level: {}", e))
+            })?;
 
         // m/83696968'/67797668'/{entity_index}'
         let derived_key = key_bipkeychain
             .derive_child(hardened_index.into())
-            .map_err(|e| BipKeychainError::Bip32Error(format!("Failed to derive entity level: {}", e)))?;
+            .map_err(|e| {
+                BipKeychainError::Bip32Error(format!("Failed to derive entity level: {}", e))
+            })?;
 
         Ok(DerivedKey { key: derived_key })
     }
@@ -134,8 +142,8 @@ mod tests {
     #[test]
     fn test_from_mnemonic() {
         let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let keychain = Keychain::from_mnemonic(mnemonic)
-            .expect("Should create keychain from valid mnemonic");
+        let keychain =
+            Keychain::from_mnemonic(mnemonic).expect("Should create keychain from valid mnemonic");
 
         // Should have master key
         assert!(keychain.master_key().private_key().to_bytes().len() == 32);

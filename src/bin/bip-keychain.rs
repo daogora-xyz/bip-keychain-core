@@ -3,7 +3,7 @@
 //! Command-line interface for deriving cryptographic keys from semantic entities.
 
 use anyhow::{Context, Result};
-use bip_keychain::{derive_key_from_entity, format_key, Keychain, KeyDerivation, OutputFormat};
+use bip_keychain::{derive_key_from_entity, format_key, KeyDerivation, Keychain, OutputFormat};
 use clap::{Parser, Subcommand};
 use std::env;
 use std::fs;
@@ -113,8 +113,8 @@ fn derive_command(
         .with_context(|| format!("Failed to read entity file: {}", entity_file.display()))?;
 
     // Parse entity
-    let key_derivation = KeyDerivation::from_json(&entity_json)
-        .context("Failed to parse entity JSON")?;
+    let key_derivation =
+        KeyDerivation::from_json(&entity_json).context("Failed to parse entity JSON")?;
 
     // Get seed phrase from environment variable
     let seed_phrase = env::var("BIP_KEYCHAIN_SEED").context(
@@ -122,18 +122,18 @@ fn derive_command(
          Set your BIP-39 seed phrase: export BIP_KEYCHAIN_SEED=\"your twelve word phrase...\"\n\
          \n\
          For security reasons, we require the seed phrase to be passed via environment variable\n\
-         rather than command-line arguments (which would be visible in process listings)."
+         rather than command-line arguments (which would be visible in process listings).",
     )?;
 
     // Create keychain from seed phrase
-    let keychain = Keychain::from_mnemonic(&seed_phrase)
-        .context("Failed to create keychain from seed phrase.\n\
-                  Ensure BIP_KEYCHAIN_SEED contains a valid BIP-39 mnemonic (12-24 words).")?;
+    let keychain = Keychain::from_mnemonic(&seed_phrase).context(
+        "Failed to create keychain from seed phrase.\n\
+                  Ensure BIP_KEYCHAIN_SEED contains a valid BIP-39 mnemonic (12-24 words).",
+    )?;
 
     // Parse parent entropy (or use default)
     let parent_entropy = if let Some(hex_str) = parent_entropy_hex {
-        hex::decode(&hex_str)
-            .context("Failed to decode parent entropy hex string")?
+        hex::decode(&hex_str).context("Failed to decode parent entropy hex string")?
     } else {
         // Default parent entropy (in production, this should be derived from the master seed)
         b"bip-keychain-default-entropy-32!".to_vec()
@@ -160,11 +160,11 @@ fn generate_seed_command(words: usize) -> Result<()> {
     // BIP-39 spec: each word encodes 11 bits
     // Total bits = words * 11 = entropy bits + checksum bits
     let entropy_bytes = match words {
-        12 => 16,  // 128 bits entropy + 4 bits checksum = 132 bits / 11 = 12 words
-        15 => 20,  // 160 bits entropy + 5 bits checksum = 165 bits / 11 = 15 words
-        18 => 24,  // 192 bits entropy + 6 bits checksum = 198 bits / 11 = 18 words
-        21 => 28,  // 224 bits entropy + 7 bits checksum = 231 bits / 11 = 21 words
-        24 => 32,  // 256 bits entropy + 8 bits checksum = 264 bits / 11 = 24 words
+        12 => 16, // 128 bits entropy + 4 bits checksum = 132 bits / 11 = 12 words
+        15 => 20, // 160 bits entropy + 5 bits checksum = 165 bits / 11 = 15 words
+        18 => 24, // 192 bits entropy + 6 bits checksum = 198 bits / 11 = 18 words
+        21 => 28, // 224 bits entropy + 7 bits checksum = 231 bits / 11 = 21 words
+        24 => 32, // 256 bits entropy + 8 bits checksum = 264 bits / 11 = 24 words
         _ => anyhow::bail!(
             "Invalid word count: {}\n\
              \n\
@@ -180,13 +180,14 @@ fn generate_seed_command(words: usize) -> Result<()> {
     // Generate cryptographically secure random entropy
     // Uses getrandom crate which uses OS-provided CSPRNG (ChaCha20, /dev/urandom, etc.)
     let mut entropy = vec![0u8; entropy_bytes];
-    getrandom::getrandom(&mut entropy)
-        .context("Failed to generate secure random entropy.\n\
-                  This usually indicates a problem with the system's random number generator.")?;
+    getrandom::getrandom(&mut entropy).context(
+        "Failed to generate secure random entropy.\n\
+                  This usually indicates a problem with the system's random number generator.",
+    )?;
 
     // Create mnemonic from entropy
-    let mnemonic = Mnemonic::from_entropy(&entropy)
-        .context("Failed to generate mnemonic from entropy")?;
+    let mnemonic =
+        Mnemonic::from_entropy(&entropy).context("Failed to generate mnemonic from entropy")?;
 
     // Display the mnemonic
     println!("{}", mnemonic);

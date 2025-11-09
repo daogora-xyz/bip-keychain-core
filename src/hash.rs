@@ -98,7 +98,7 @@ fn blake2b_hash(entity_json: &str) -> Result<[u8; 64]> {
 /// Note: For security-critical applications, prefer HMAC-SHA-512 or BLAKE2b
 /// which natively produce 512-bit (64-byte) outputs.
 fn sha256_padded(entity_json: &str, _parent_entropy: &[u8]) -> Result<[u8; 64]> {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
 
     // Canonicalize JSON for deterministic hashing
     let canonical = canonicalize_json(entity_json)?;
@@ -129,8 +129,9 @@ fn canonicalize_json(input: &str) -> Result<String> {
     match serde_json::from_str::<Value>(input) {
         Ok(value) => {
             // Re-serialize in canonical form (serde_json sorts keys by default)
-            serde_json::to_string(&value)
-                .map_err(|e| BipKeychainError::HashError(format!("JSON serialization error: {}", e)))
+            serde_json::to_string(&value).map_err(|e| {
+                BipKeychainError::HashError(format!("JSON serialization error: {}", e))
+            })
         }
         Err(_) => {
             // Not JSON, use input as-is (for test vectors)

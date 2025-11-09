@@ -14,20 +14,20 @@
 //! ```
 
 // Module declarations
-pub mod entity;
-pub mod hash;
-pub mod derivation;
 pub mod bip32_wrapper;
-pub mod output;
+pub mod derivation;
+pub mod entity;
 pub mod error;
+pub mod hash;
+pub mod output;
 
 // Re-exports for convenience
-pub use entity::{KeyDerivation, DerivationConfig, HashFunctionConfig};
-pub use hash::{HashFunction, hash_entity};
+pub use bip32_wrapper::{DerivedKey, Keychain};
 pub use derivation::derive_key_from_entity;
-pub use bip32_wrapper::{Keychain, DerivedKey};
-pub use output::{OutputFormat, Ed25519Keypair, format_key};
+pub use entity::{DerivationConfig, HashFunctionConfig, KeyDerivation};
 pub use error::BipKeychainError;
+pub use hash::{hash_entity, HashFunction};
+pub use output::{format_key, Ed25519Keypair, OutputFormat};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,6 +38,7 @@ mod tests {
 
     #[test]
     fn test_version() {
-        assert!(!VERSION.is_empty());
+        // Verify VERSION constant is correctly set from Cargo.toml
+        assert_eq!(VERSION, "0.1.0");
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! Uses known test vectors from NIST and other standards bodies.
 
-use bip_keychain::{HashFunction, hash::hash_entity};
+use bip_keychain::{hash::hash_entity, HashFunction};
 
 #[test]
 fn test_hmac_sha512_rfc4231_test_case_1() {
@@ -20,11 +20,12 @@ fn test_hmac_sha512_rfc4231_test_case_1() {
 
     let expected = hex::decode(
         "87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cde\
-         daa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854"
-    ).unwrap();
+         daa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854",
+    )
+    .unwrap();
 
-    let result = hash_entity(data, &key, HashFunction::HmacSha512)
-        .expect("HMAC-SHA-512 should succeed");
+    let result =
+        hash_entity(data, &key, HashFunction::HmacSha512).expect("HMAC-SHA-512 should succeed");
 
     assert_eq!(
         result.as_slice(),
@@ -44,11 +45,12 @@ fn test_hmac_sha512_rfc4231_test_case_2() {
 
     let expected = hex::decode(
         "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea250554\
-         9758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
-    ).unwrap();
+         9758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737",
+    )
+    .unwrap();
 
-    let result = hash_entity(data, key, HashFunction::HmacSha512)
-        .expect("HMAC-SHA-512 should succeed");
+    let result =
+        hash_entity(data, key, HashFunction::HmacSha512).expect("HMAC-SHA-512 should succeed");
 
     assert_eq!(
         result.as_slice(),
@@ -96,11 +98,12 @@ fn test_blake2b_empty_string() {
 
     let expected = hex::decode(
         "786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419\
-         d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce"
-    ).unwrap();
+         d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce",
+    )
+    .unwrap();
 
-    let result = hash_entity(data, dummy_entropy, HashFunction::Blake2b)
-        .expect("BLAKE2b should succeed");
+    let result =
+        hash_entity(data, dummy_entropy, HashFunction::Blake2b).expect("BLAKE2b should succeed");
 
     assert_eq!(
         result.as_slice(),
@@ -120,11 +123,12 @@ fn test_blake2b_abc() {
 
     let expected = hex::decode(
         "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d1\
-         7d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
-    ).unwrap();
+         7d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923",
+    )
+    .unwrap();
 
-    let result = hash_entity(data, dummy_entropy, HashFunction::Blake2b)
-        .expect("BLAKE2b should succeed");
+    let result =
+        hash_entity(data, dummy_entropy, HashFunction::Blake2b).expect("BLAKE2b should succeed");
 
     assert_eq!(
         result.as_slice(),
@@ -138,7 +142,8 @@ fn test_blake2b_with_json_entity() {
     // BIP-Keychain specific test: JSON entity with BLAKE2b
     // Used by Blockchain Commons
 
-    let entity_json = r#"{"@context":"https://schema.org","@type":"Organization","name":"Blockchain Commons"}"#;
+    let entity_json =
+        r#"{"@context":"https://schema.org","@type":"Organization","name":"Blockchain Commons"}"#;
     let dummy_entropy = &[0u8; 32]; // BLAKE2b doesn't use parent entropy
 
     // Test determinism
@@ -170,16 +175,15 @@ fn test_sha256_empty_string() {
 
     // SHA-256 of empty string:
     // e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-    let expected_32 = hex::decode(
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    ).unwrap();
+    let expected_32 =
+        hex::decode("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").unwrap();
 
     // Our implementation pads to 64 bytes
     let mut expected = vec![0u8; 64];
     expected[..32].copy_from_slice(&expected_32);
 
-    let result = hash_entity(data, dummy_entropy, HashFunction::Sha256)
-        .expect("SHA-256 should succeed");
+    let result =
+        hash_entity(data, dummy_entropy, HashFunction::Sha256).expect("SHA-256 should succeed");
 
     assert_eq!(
         result.as_slice(),
@@ -199,15 +203,14 @@ fn test_sha256_abc() {
 
     // SHA-256 of "abc":
     // ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
-    let expected_32 = hex::decode(
-        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-    ).unwrap();
+    let expected_32 =
+        hex::decode("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad").unwrap();
 
     let mut expected = vec![0u8; 64];
     expected[..32].copy_from_slice(&expected_32);
 
-    let result = hash_entity(data, dummy_entropy, HashFunction::Sha256)
-        .expect("SHA-256 should succeed");
+    let result =
+        hash_entity(data, dummy_entropy, HashFunction::Sha256).expect("SHA-256 should succeed");
 
     assert_eq!(
         result.as_slice(),
@@ -235,13 +238,23 @@ fn test_sha256_with_json_entity() {
         "Same input should produce same output (determinism)"
     );
 
-    assert_eq!(result1.len(), 64, "SHA-256 (padded) should produce 64 bytes");
+    assert_eq!(
+        result1.len(),
+        64,
+        "SHA-256 (padded) should produce 64 bytes"
+    );
 
     // Verify first 32 bytes are non-zero (the actual hash)
     // and last 32 bytes are zero (the padding)
     let has_nonzero_in_first_half = result1[..32].iter().any(|&b| b != 0);
     let all_zero_in_second_half = result1[32..].iter().all(|&b| b == 0);
 
-    assert!(has_nonzero_in_first_half, "First 32 bytes should contain the hash");
-    assert!(all_zero_in_second_half, "Last 32 bytes should be zero padding");
+    assert!(
+        has_nonzero_in_first_half,
+        "First 32 bytes should contain the hash"
+    );
+    assert!(
+        all_zero_in_second_half,
+        "Last 32 bytes should be zero padding"
+    );
 }
