@@ -75,6 +75,18 @@ enum CliOutputFormat {
     Gpg,
     /// JSON with all key data and metadata
     Json,
+    /// UR-encoded entity (for airgapped transfer)
+    #[cfg(feature = "bc")]
+    UrEntity,
+    /// UR-encoded public key (for returning from airgapped)
+    #[cfg(feature = "bc")]
+    UrPubkey,
+    /// QR code with UR-encoded entity
+    #[cfg(feature = "bc")]
+    QrEntity,
+    /// QR code with UR-encoded public key
+    #[cfg(feature = "bc")]
+    QrPubkey,
 }
 
 impl From<CliOutputFormat> for OutputFormat {
@@ -86,6 +98,14 @@ impl From<CliOutputFormat> for OutputFormat {
             CliOutputFormat::Ssh => OutputFormat::SshPublicKey,
             CliOutputFormat::Gpg => OutputFormat::GpgPublicKey,
             CliOutputFormat::Json => OutputFormat::Json,
+            #[cfg(feature = "bc")]
+            CliOutputFormat::UrEntity => OutputFormat::UrEntity,
+            #[cfg(feature = "bc")]
+            CliOutputFormat::UrPubkey => OutputFormat::UrPubkey,
+            #[cfg(feature = "bc")]
+            CliOutputFormat::QrEntity => OutputFormat::QrEntity,
+            #[cfg(feature = "bc")]
+            CliOutputFormat::QrPubkey => OutputFormat::QrPubkey,
         }
     }
 }

@@ -24,6 +24,18 @@ pub enum OutputFormat {
     GpgPublicKey,
     /// JSON with all key data
     Json,
+    /// UR-encoded entity definition (for airgapped transfer)
+    #[cfg(feature = "bc")]
+    UrEntity,
+    /// UR-encoded public key only (for returning from airgapped)
+    #[cfg(feature = "bc")]
+    UrPubkey,
+    /// QR code containing UR-encoded entity
+    #[cfg(feature = "bc")]
+    QrEntity,
+    /// QR code containing UR-encoded public key
+    #[cfg(feature = "bc")]
+    QrPubkey,
 }
 
 /// A complete Ed25519 keypair derived from BIP-Keychain
@@ -206,6 +218,161 @@ pub fn format_key(
 
             Ok(serde_json::to_string_pretty(&json)?)
         }
+
+        #[cfg(feature = "bc")]
+        OutputFormat::UrEntity => {
+            // UR-encoded entity definition (for sending to airgapped machine)
+            ur::encode_entity(key_derivation)
+        }
+
+        #[cfg(feature = "bc")]
+        OutputFormat::UrPubkey => {
+            // UR-encoded public key only (for returning from airgapped)
+            let keypair = Ed25519Keypair::from_derived_key(derived);
+            ur::encode_pubkey(&keypair.public_key_bytes())
+        }
+
+        #[cfg(feature = "bc")]
+        OutputFormat::QrEntity => {
+            // QR code with UR-encoded entity
+            let ur_string = ur::encode_entity(key_derivation)?;
+            ur::generate_qr(&ur_string)
+        }
+
+        #[cfg(feature = "bc")]
+        OutputFormat::QrPubkey => {
+            // QR code with UR-encoded public key
+            let keypair = Ed25519Keypair::from_derived_key(derived);
+            let ur_string = ur::encode_pubkey(&keypair.public_key_bytes())?;
+            ur::generate_qr(&ur_string)
+        }
+    }
+}
+
+/// Blockchain Commons UR encoding support
+#[cfg(feature = "bc")]
+mod ur {
+    use crate::{
+        entity::KeyDerivation,
+        error::{BipKeychainError, Result},
+    };
+    use bc_ur::prelude::*;
+
+    /// Encode entity definition as UR string
+    ///
+    /// This creates a UR that can be transferred to an airgapped machine
+    /// via QR code for secure key derivation.
+    pub fn encode_entity(key_derivation: &KeyDerivation) -> Result<String> {
+        // Serialize entity as CBOR-encoded JSON
+        let entity_json = key_derivation.entity_json()?;
+        let cbor_data = serde_json::to_vec(&entity_json).map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to serialize entity: {}", e))
+        })?;
+
+        // Create UR with type "crypto-entity"
+        let ur = UR::new("crypto-entity", cbor_data)
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to create UR: {:?}", e)))?;
+
+        Ok(ur.string())
+    }
+
+    /// Encode Ed25519 public key as UR string
+    ///
+    /// This creates a UR for returning the public key from an airgapped machine.
+    pub fn encode_pubkey(pubkey: &[u8; 32]) -> Result<String> {
+        // Encode as CBOR byte string
+        use dcbor::prelude::*;
+        let cbor = CBOR::to_byte_string(pubkey.to_vec());
+        let cbor_bytes = cbor.to_cbor_data();
+
+        // Use "crypto-pubkey" UR type for Ed25519 public keys
+        let ur = UR::new("crypto-pubkey", cbor_bytes)
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to create UR: {:?}", e)))?;
+
+        Ok(ur.string())
+    }
+
+    /// Generate ASCII QR code from UR string
+    ///
+    /// Returns a terminal-printable QR code that can be scanned with a camera.
+    pub fn generate_qr(ur_string: &str) -> Result<String> {
+        use qrcode::{render::unicode, QrCode};
+
+        let code = QrCode::new(ur_string.as_bytes()).map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to generate QR code: {:?}", e))
+        })?;
+
+        let qr_string = code
+            .render::<unicode::Dense1x2>()
+            .dark_color(unicode::Dense1x2::Light)
+            .light_color(unicode::Dense1x2::Dark)
+            .build();
+
+        Ok(format!(
+            "Scan this QR code:\n\n{}\n\nUR: {}",
+            qr_string, ur_string
+        ))
+    }
+
+    /// Decode entity from UR string
+    ///
+    /// This parses a UR-encoded entity definition.
+    pub fn decode_entity(ur_string: &str) -> Result<KeyDerivation> {
+        let ur = UR::from_ur_string(ur_string)
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse UR: {:?}", e)))?;
+
+        // Verify UR type
+        if ur.ur_type_str() != "crypto-entity" {
+            return Err(BipKeychainError::OutputError(format!(
+                "Invalid UR type: expected crypto-entity, got {}",
+                ur.ur_type_str()
+            )));
+        }
+
+        // Decode CBOR payload - convert CBOR to bytes first
+        let cbor_bytes = ur.cbor().to_cbor_data();
+        let entity_json: serde_json::Value = serde_json::from_slice(&cbor_bytes).map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to decode entity: {}", e))
+        })?;
+
+        KeyDerivation::from_json(&entity_json.to_string())
+    }
+
+    /// Decode Ed25519 public key from UR string
+    pub fn decode_pubkey(ur_string: &str) -> Result<[u8; 32]> {
+        use dcbor::prelude::*;
+
+        let ur = UR::from_ur_string(ur_string)
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse UR: {:?}", e)))?;
+
+        // Verify UR type
+        if ur.ur_type_str() != "crypto-pubkey" {
+            return Err(BipKeychainError::OutputError(format!(
+                "Invalid UR type: expected crypto-pubkey, got {}",
+                ur.ur_type_str()
+            )));
+        }
+
+        // Decode CBOR byte string
+        let cbor_data = ur.cbor().to_cbor_data();
+        let cbor = CBOR::try_from_data(&cbor_data)
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse CBOR: {:?}", e)))?;
+
+        // Extract byte string
+        let pubkey_bytes = cbor.try_into_byte_string().map_err(|e| {
+            BipKeychainError::OutputError(format!("Expected CBOR byte string: {:?}", e))
+        })?;
+
+        if pubkey_bytes.len() != 32 {
+            return Err(BipKeychainError::OutputError(format!(
+                "Invalid public key length: expected 32 bytes, got {}",
+                pubkey_bytes.len()
+            )));
+        }
+
+        let mut pubkey = [0u8; 32];
+        pubkey.copy_from_slice(&pubkey_bytes);
+        Ok(pubkey)
     }
 }
 
@@ -264,5 +431,64 @@ mod tests {
 
         assert_ne!(keypair1.public_key_bytes(), keypair2.public_key_bytes());
         assert_ne!(keypair1.private_key_bytes(), keypair2.private_key_bytes());
+    }
+
+    #[cfg(feature = "bc")]
+    #[test]
+    fn test_ur_encode_pubkey() {
+        let pubkey = [42u8; 32];
+        let ur_string = ur::encode_pubkey(&pubkey).expect("Should encode pubkey");
+
+        // Should start with ur:crypto-pubkey
+        assert!(ur_string.starts_with("ur:crypto-pubkey/"));
+
+        // Should be decodable
+        let decoded = ur::decode_pubkey(&ur_string).expect("Should decode pubkey");
+        assert_eq!(decoded, pubkey);
+    }
+
+    #[cfg(feature = "bc")]
+    #[test]
+    fn test_ur_encode_entity() {
+        use crate::entity::{DerivationConfig, HashFunctionConfig, KeyDerivation};
+
+        let entity_json = r#"{
+            "schema_type": "test",
+            "entity": {"name": "test"},
+            "derivation_config": {"hash_function": "hmac_sha512", "hardened": true}
+        }"#;
+
+        let key_derivation = KeyDerivation::from_json(entity_json).expect("Should parse entity");
+
+        let ur_string = ur::encode_entity(&key_derivation).expect("Should encode entity");
+
+        // Should start with ur:crypto-entity
+        assert!(ur_string.starts_with("ur:crypto-entity/"));
+
+        // Should be decodable
+        let decoded = ur::decode_entity(&ur_string).expect("Should decode entity");
+
+        assert_eq!(decoded.schema_type, key_derivation.schema_type);
+        assert_eq!(
+            decoded.derivation_config.hash_function,
+            key_derivation.derivation_config.hash_function
+        );
+        assert_eq!(
+            decoded.derivation_config.hardened,
+            key_derivation.derivation_config.hardened
+        );
+    }
+
+    #[cfg(feature = "bc")]
+    #[test]
+    fn test_qr_generation() {
+        let pubkey = [123u8; 32];
+        let ur_string = ur::encode_pubkey(&pubkey).expect("Should encode pubkey");
+        let qr_output = ur::generate_qr(&ur_string).expect("Should generate QR");
+
+        // Should contain the UR string
+        assert!(qr_output.contains(&ur_string));
+        // Should have QR code blocks
+        assert!(qr_output.contains("█"));
     }
 }
