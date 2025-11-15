@@ -516,9 +516,8 @@ fn decode_ur_command(ur_string: String, output: Option<PathBuf>) -> Result<()> {
 
             Ok(())
         }
-        Err(entity_err) => {
+        Err(_) => {
             // Try to decode as public key
-            eprintln!("DEBUG: decode_entity failed: {}", entity_err);
             match ur::decode_pubkey(&ur_string) {
                 Ok(pubkey) => {
                     let hex_pubkey = hex::encode(pubkey);

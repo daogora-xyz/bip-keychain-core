@@ -281,15 +281,18 @@ pub mod ur {
     /// This creates a UR that can be transferred to an airgapped machine
     /// via QR code for secure key derivation.
     pub fn encode_entity(key_derivation: &KeyDerivation) -> Result<String> {
-        // Serialize entity as JSON bytes
-        let entity_json = key_derivation.entity_json()?;
-        let json_bytes = serde_json::to_vec(&entity_json).map_err(|e| {
+        use dcbor::prelude::*;
+
+        // Serialize entire KeyDerivation struct as JSON bytes
+        let json_bytes = serde_json::to_vec(key_derivation).map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to serialize entity: {}", e))
         })?;
 
-        // Create UR with type "crypto-entity"
-        // UR::new() automatically handles CBOR encoding
-        let ur = UR::new("crypto-entity", json_bytes)
+        // Create CBOR byte string (prevents auto-conversion to CBOR array)
+        let cbor = CBOR::to_byte_string(json_bytes);
+
+        // Create UR with CBOR byte string
+        let ur = UR::new("crypto-entity", cbor)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to create UR: {:?}", e)))?;
 
         Ok(ur.string())
@@ -299,9 +302,13 @@ pub mod ur {
     ///
     /// This creates a UR for returning the public key from an airgapped machine.
     pub fn encode_pubkey(pubkey: &[u8; 32]) -> Result<String> {
-        // Use "crypto-pubkey" UR type for Ed25519 public keys
-        // UR::new() automatically handles CBOR encoding
-        let ur = UR::new("crypto-pubkey", pubkey.to_vec())
+        use dcbor::prelude::*;
+
+        // Create CBOR byte string (prevents auto-conversion to CBOR array)
+        let cbor = CBOR::to_byte_string(pubkey.to_vec());
+
+        // Create UR with CBOR byte string
+        let ur = UR::new("crypto-pubkey", cbor)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to create UR: {:?}", e)))?;
 
         Ok(ur.string())
@@ -346,15 +353,19 @@ pub mod ur {
             )));
         }
 
-        // Extract raw bytes - UR.cbor().to_cbor_data() returns the payload
-        let json_bytes = ur.cbor().to_cbor_data();
+        // Extract CBOR byte string from UR
+        use dcbor::prelude::*;
+        let cbor = ur.cbor();
+        let json_bytes = cbor.try_into_byte_string().map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to extract byte string from CBOR: {:?}", e))
+        })?;
 
-        // Parse JSON
-        let entity_json: serde_json::Value = serde_json::from_slice(&json_bytes).map_err(|e| {
+        // Parse JSON directly to KeyDerivation struct
+        let key_derivation: KeyDerivation = serde_json::from_slice(&json_bytes).map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to decode entity JSON: {}", e))
         })?;
 
-        KeyDerivation::from_json(&entity_json.to_string())
+        Ok(key_derivation)
     }
 
     /// Decode Ed25519 public key from UR string
@@ -370,8 +381,12 @@ pub mod ur {
             )));
         }
 
-        // Extract raw bytes - UR.cbor().to_cbor_data() returns the payload
-        let pubkey_bytes = ur.cbor().to_cbor_data();
+        // Extract CBOR byte string from UR
+        use dcbor::prelude::*;
+        let cbor = ur.cbor();
+        let pubkey_bytes = cbor.try_into_byte_string().map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to extract byte string from CBOR: {:?}", e))
+        })?;
 
         if pubkey_bytes.len() != 32 {
             return Err(BipKeychainError::OutputError(format!(
@@ -407,9 +422,8 @@ pub mod ur {
     ) -> Result<Vec<String>> {
         use ur::Encoder;
 
-        // Serialize entity as JSON bytes
-        let entity_json = key_derivation.entity_json()?;
-        let json_bytes = serde_json::to_vec(&entity_json).map_err(|e| {
+        // Serialize entire KeyDerivation struct as JSON bytes
+        let json_bytes = serde_json::to_vec(key_derivation).map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to serialize entity: {}", e))
         })?;
 
@@ -564,12 +578,12 @@ pub mod ur {
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to extract message: {:?}", e)))?
             .ok_or_else(|| BipKeychainError::OutputError("No message available from decoder".to_string()))?;
 
-        // Parse JSON
-        let entity_json: serde_json::Value = serde_json::from_slice(&json_bytes).map_err(|e| {
+        // Parse JSON directly to KeyDerivation struct
+        let key_derivation: KeyDerivation = serde_json::from_slice(&json_bytes).map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to decode entity JSON: {}", e))
         })?;
 
-        KeyDerivation::from_json(&entity_json.to_string())
+        Ok(key_derivation)
     }
 }
 
