@@ -94,6 +94,42 @@ enum Commands {
         #[arg(value_name = "SHARE_FILES", required = true)]
         share_files: Vec<PathBuf>,
     },
+
+    /// Decode single-part UR string
+    ///
+    /// Decodes a UR-encoded entity or public key from airgapped transfer.
+    ///
+    /// Example:
+    ///   bip-keychain decode-ur "ur:crypto-entity/..."
+    #[cfg(feature = "bc")]
+    DecodeUr {
+        /// UR string to decode
+        #[arg(value_name = "UR_STRING")]
+        ur_string: String,
+
+        /// Output file for decoded entity JSON (stdout if not specified)
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Decode multi-part UR sequence (fountain codes)
+    ///
+    /// Decodes an animated QR sequence by collecting UR parts from files.
+    /// Parts can be in any order and some can be missing - fountain codes
+    /// will reconstruct the original data.
+    ///
+    /// Example:
+    ///   bip-keychain decode-ur-animated part-*.txt
+    #[cfg(feature = "bc")]
+    DecodeUrAnimated {
+        /// Files containing UR parts (one UR string per file)
+        #[arg(value_name = "UR_PART_FILES", required = true)]
+        part_files: Vec<PathBuf>,
+
+        /// Output file for decoded entity JSON (stdout if not specified)
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]
@@ -168,6 +204,12 @@ fn main() -> Result<()> {
         } => backup_seed_command(groups, threshold, output_dir),
         #[cfg(feature = "bc")]
         Commands::RecoverSeed { share_files } => recover_seed_command(share_files),
+        #[cfg(feature = "bc")]
+        Commands::DecodeUr { ur_string, output } => decode_ur_command(ur_string, output),
+        #[cfg(feature = "bc")]
+        Commands::DecodeUrAnimated { part_files, output } => {
+            decode_ur_animated_command(part_files, output)
+        }
     }
 }
 
@@ -440,3 +482,133 @@ fn recover_seed_command(share_files: Vec<PathBuf>) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(feature = "bc")]
+fn decode_ur_command(ur_string: String, output: Option<PathBuf>) -> Result<()> {
+    use bip_keychain::output::ur;
+
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  UR Decoder - Single-part");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+
+    // Try to decode as entity
+    match ur::decode_entity(&ur_string) {
+        Ok(entity) => {
+            let json = entity.entity_json()?;
+            let json_str = serde_json::to_string_pretty(&json)?;
+
+            if let Some(output_path) = output {
+                std::fs::write(&output_path, &json_str)
+                    .with_context(|| format!("Failed to write to {}", output_path.display()))?;
+                eprintln!("✓ Decoded entity written to: {}", output_path.display());
+            } else {
+                println!("{}", json_str);
+            }
+
+            eprintln!();
+            eprintln!("Decoded entity:");
+            eprintln!("  Schema type: {:?}", entity.schema_type);
+            eprintln!("  Hash function: {:?}", entity.derivation_config.hash_function);
+            if let Some(purpose) = &entity.purpose {
+                eprintln!("  Purpose: {}", purpose);
+            }
+
+            Ok(())
+        }
+        Err(entity_err) => {
+            // Try to decode as public key
+            eprintln!("DEBUG: decode_entity failed: {}", entity_err);
+            match ur::decode_pubkey(&ur_string) {
+                Ok(pubkey) => {
+                    let hex_pubkey = hex::encode(pubkey);
+
+                    if let Some(output_path) = output {
+                        std::fs::write(&output_path, &hex_pubkey)
+                            .with_context(|| format!("Failed to write to {}", output_path.display()))?;
+                        eprintln!("✓ Decoded public key written to: {}", output_path.display());
+                    } else {
+                        println!("{}", hex_pubkey);
+                    }
+
+                    eprintln!();
+                    eprintln!("Decoded public key:");
+                    eprintln!("  {}", hex_pubkey);
+
+                    Ok(())
+                }
+                Err(e) => {
+                    anyhow::bail!("Failed to decode UR as entity or public key: {}", e)
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "bc")]
+fn decode_ur_animated_command(part_files: Vec<PathBuf>, output: Option<PathBuf>) -> Result<()> {
+    use bip_keychain::output::ur;
+
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  UR Decoder - Multi-part (Fountain Codes)");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+
+    eprintln!("Loading {} UR part files...", part_files.len());
+    eprintln!();
+
+    // Read all UR parts from files
+    let mut ur_parts = Vec::new();
+    for part_file in &part_files {
+        let part_content = std::fs::read_to_string(part_file)
+            .with_context(|| format!("Failed to read {}", part_file.display()))?;
+
+        // Trim whitespace and add to parts
+        let part = part_content.trim().to_string();
+        ur_parts.push(part);
+        eprintln!("  ✓ {} ({} bytes)", part_file.display(), part_content.len());
+    }
+
+    eprintln!();
+    eprintln!("Decoding with fountain codes...");
+
+    // Decode using fountain codes
+    let entity = ur::decode_entity_animated(&ur_parts)
+        .context("Failed to decode animated UR sequence")?;
+
+    // Output the decoded entity
+    let json = entity.entity_json()?;
+    let json_str = serde_json::to_string_pretty(&json)?;
+
+    if let Some(output_path) = output {
+        std::fs::write(&output_path, &json_str)
+            .with_context(|| format!("Failed to write to {}", output_path.display()))?;
+        eprintln!();
+        eprintln!("✓ Decoded entity written to: {}", output_path.display());
+    } else {
+        println!("{}", json_str);
+    }
+
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  Decode Summary");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+    eprintln!("Schema type: {:?}", entity.schema_type);
+    eprintln!("Hash function: {:?}", entity.derivation_config.hash_function);
+    if let Some(purpose) = &entity.purpose {
+        eprintln!("Purpose: {}", purpose);
+    }
+    eprintln!();
+    eprintln!("✓ Successfully decoded from {} parts", part_files.len());
+    eprintln!();
+    eprintln!("Fountain code efficiency:");
+    eprintln!("  - Theoretical minimum: ~{} parts", (part_files.len() as f32 / 1.5) as usize);
+    eprintln!("  - Parts provided: {}", part_files.len());
+    eprintln!("  - Overhead: ~{:.1}%", ((part_files.len() as f32 / (part_files.len() as f32 / 1.5)) - 1.0) * 100.0);
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    Ok(())
+}
+

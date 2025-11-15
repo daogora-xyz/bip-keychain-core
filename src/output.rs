@@ -269,7 +269,7 @@ pub fn format_key(
 
 /// Blockchain Commons UR encoding support
 #[cfg(feature = "bc")]
-mod ur {
+pub mod ur {
     use crate::{
         entity::KeyDerivation,
         error::{BipKeychainError, Result},
@@ -281,14 +281,15 @@ mod ur {
     /// This creates a UR that can be transferred to an airgapped machine
     /// via QR code for secure key derivation.
     pub fn encode_entity(key_derivation: &KeyDerivation) -> Result<String> {
-        // Serialize entity as CBOR-encoded JSON
+        // Serialize entity as JSON bytes
         let entity_json = key_derivation.entity_json()?;
-        let cbor_data = serde_json::to_vec(&entity_json).map_err(|e| {
+        let json_bytes = serde_json::to_vec(&entity_json).map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to serialize entity: {}", e))
         })?;
 
         // Create UR with type "crypto-entity"
-        let ur = UR::new("crypto-entity", cbor_data)
+        // UR::new() automatically handles CBOR encoding
+        let ur = UR::new("crypto-entity", json_bytes)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to create UR: {:?}", e)))?;
 
         Ok(ur.string())
@@ -298,13 +299,9 @@ mod ur {
     ///
     /// This creates a UR for returning the public key from an airgapped machine.
     pub fn encode_pubkey(pubkey: &[u8; 32]) -> Result<String> {
-        // Encode as CBOR byte string
-        use dcbor::prelude::*;
-        let cbor = CBOR::to_byte_string(pubkey.to_vec());
-        let cbor_bytes = cbor.to_cbor_data();
-
         // Use "crypto-pubkey" UR type for Ed25519 public keys
-        let ur = UR::new("crypto-pubkey", cbor_bytes)
+        // UR::new() automatically handles CBOR encoding
+        let ur = UR::new("crypto-pubkey", pubkey.to_vec())
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to create UR: {:?}", e)))?;
 
         Ok(ur.string())
@@ -336,6 +333,8 @@ mod ur {
     ///
     /// This parses a UR-encoded entity definition.
     pub fn decode_entity(ur_string: &str) -> Result<KeyDerivation> {
+        use dcbor::prelude::*;
+
         let ur = UR::from_ur_string(ur_string)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse UR: {:?}", e)))?;
 
@@ -347,10 +346,12 @@ mod ur {
             )));
         }
 
-        // Decode CBOR payload - convert CBOR to bytes first
-        let cbor_bytes = ur.cbor().to_cbor_data();
-        let entity_json: serde_json::Value = serde_json::from_slice(&cbor_bytes).map_err(|e| {
-            BipKeychainError::OutputError(format!("Failed to decode entity: {}", e))
+        // Extract raw bytes - UR.cbor().to_cbor_data() returns the payload
+        let json_bytes = ur.cbor().to_cbor_data();
+
+        // Parse JSON
+        let entity_json: serde_json::Value = serde_json::from_slice(&json_bytes).map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to decode entity JSON: {}", e))
         })?;
 
         KeyDerivation::from_json(&entity_json.to_string())
@@ -358,8 +359,6 @@ mod ur {
 
     /// Decode Ed25519 public key from UR string
     pub fn decode_pubkey(ur_string: &str) -> Result<[u8; 32]> {
-        use dcbor::prelude::*;
-
         let ur = UR::from_ur_string(ur_string)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse UR: {:?}", e)))?;
 
@@ -371,15 +370,8 @@ mod ur {
             )));
         }
 
-        // Decode CBOR byte string
-        let cbor_data = ur.cbor().to_cbor_data();
-        let cbor = CBOR::try_from_data(&cbor_data)
-            .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse CBOR: {:?}", e)))?;
-
-        // Extract byte string
-        let pubkey_bytes = cbor.try_into_byte_string().map_err(|e| {
-            BipKeychainError::OutputError(format!("Expected CBOR byte string: {:?}", e))
-        })?;
+        // Extract raw bytes - UR.cbor().to_cbor_data() returns the payload
+        let pubkey_bytes = ur.cbor().to_cbor_data();
 
         if pubkey_bytes.len() != 32 {
             return Err(BipKeychainError::OutputError(format!(
@@ -415,14 +407,14 @@ mod ur {
     ) -> Result<Vec<String>> {
         use ur::Encoder;
 
-        // Encode entity as CBOR
+        // Serialize entity as JSON bytes
         let entity_json = key_derivation.entity_json()?;
-        let cbor_data = serde_json::to_vec(&entity_json).map_err(|e| {
+        let json_bytes = serde_json::to_vec(&entity_json).map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to serialize entity: {}", e))
         })?;
 
-        // Create fountain encoder
-        let mut encoder = Encoder::bytes(&cbor_data, max_fragment_len)
+        // Create fountain encoder with raw JSON bytes
+        let mut encoder = Encoder::bytes(&json_bytes, max_fragment_len)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to create encoder: {:?}", e)))?;
 
         // Generate parts
@@ -430,7 +422,7 @@ mod ur {
 
         // Calculate recommended parts based on data size
         // Fountain codes need ~1.5x the minimum fragments for reliable decoding
-        let min_fragments = (cbor_data.len() + max_fragment_len - 1) / max_fragment_len;
+        let min_fragments = (json_bytes.len() + max_fragment_len - 1) / max_fragment_len;
         let recommended_parts = if num_parts == 0 {
             (min_fragments as f32 * 1.5).ceil() as usize
         } else {
@@ -520,6 +512,64 @@ mod ur {
                 thread::sleep(Duration::from_millis(frame_delay_ms));
             }
         }
+    }
+
+    /// Decode entity from multi-part UR sequence (fountain codes)
+    ///
+    /// Collects UR parts until enough fragments are received to reconstruct
+    /// the original entity. Uses fountain decoding - parts can arrive in any
+    /// order and some can be missed.
+    ///
+    /// # Arguments
+    /// * `ur_parts` - Vector of UR strings from scanning QR codes
+    ///
+    /// # Returns
+    /// Decoded entity once enough parts collected
+    #[cfg(feature = "bc")]
+    pub fn decode_entity_animated(ur_parts: &[String]) -> Result<KeyDerivation> {
+        use ur::Decoder;
+
+        if ur_parts.is_empty() {
+            return Err(BipKeychainError::OutputError(
+                "No UR parts provided for decoding".to_string(),
+            ));
+        }
+
+        // Create decoder
+        let mut decoder = Decoder::default();
+
+        // Feed parts to decoder
+        for (idx, part) in ur_parts.iter().enumerate() {
+            decoder
+                .receive(part)
+                .map_err(|e| BipKeychainError::OutputError(format!("Failed to receive part {}: {:?}", idx + 1, e)))?;
+
+            // Check if we have enough to decode
+            if decoder.complete() {
+                eprintln!("✓ Decoded successfully after {} parts", idx + 1);
+                break;
+            }
+        }
+
+        // Check if decoding completed
+        if !decoder.complete() {
+            return Err(BipKeychainError::OutputError(format!(
+                "Insufficient parts to decode: received {}, need more fragments",
+                ur_parts.len()
+            )));
+        }
+
+        // Extract decoded message (raw JSON bytes from fountain decoder)
+        let json_bytes = decoder.message()
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to extract message: {:?}", e)))?
+            .ok_or_else(|| BipKeychainError::OutputError("No message available from decoder".to_string()))?;
+
+        // Parse JSON
+        let entity_json: serde_json::Value = serde_json::from_slice(&json_bytes).map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to decode entity JSON: {}", e))
+        })?;
+
+        KeyDerivation::from_json(&entity_json.to_string())
     }
 }
 
