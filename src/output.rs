@@ -340,8 +340,6 @@ pub mod ur {
     ///
     /// This parses a UR-encoded entity definition.
     pub fn decode_entity(ur_string: &str) -> Result<KeyDerivation> {
-        use dcbor::prelude::*;
-
         let ur = UR::from_ur_string(ur_string)
             .map_err(|e| BipKeychainError::OutputError(format!("Failed to parse UR: {:?}", e)))?;
 
@@ -354,7 +352,6 @@ pub mod ur {
         }
 
         // Extract CBOR byte string from UR
-        use dcbor::prelude::*;
         let cbor = ur.cbor();
         let json_bytes = cbor.try_into_byte_string().map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to extract byte string from CBOR: {:?}", e))
@@ -382,7 +379,6 @@ pub mod ur {
         }
 
         // Extract CBOR byte string from UR
-        use dcbor::prelude::*;
         let cbor = ur.cbor();
         let pubkey_bytes = cbor.try_into_byte_string().map_err(|e| {
             BipKeychainError::OutputError(format!("Failed to extract byte string from CBOR: {:?}", e))
@@ -661,7 +657,7 @@ mod tests {
     #[cfg(feature = "bc")]
     #[test]
     fn test_ur_encode_entity() {
-        use crate::entity::{DerivationConfig, HashFunctionConfig, KeyDerivation};
+        use crate::entity::KeyDerivation;
 
         let entity_json = r#"{
             "schema_type": "test",

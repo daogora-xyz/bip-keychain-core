@@ -495,8 +495,7 @@ fn decode_ur_command(ur_string: String, output: Option<PathBuf>) -> Result<()> {
     // Try to decode as entity
     match ur::decode_entity(&ur_string) {
         Ok(entity) => {
-            let json = entity.entity_json()?;
-            let json_str = serde_json::to_string_pretty(&json)?;
+            let json_str = serde_json::to_string_pretty(&entity)?;
 
             if let Some(output_path) = output {
                 std::fs::write(&output_path, &json_str)
