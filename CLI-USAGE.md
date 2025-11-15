@@ -58,9 +58,18 @@ bip-keychain derive <ENTITY_JSON> [OPTIONS]
   - Used as HMAC key for HMAC-based hash functions
   - Default: `bip-keychain-default-entropy-32!` (for testing)
 
-- `--format <FORMAT>` - Output format (default: `hex`)
-  - `hex` - Hexadecimal encoding of Ed25519 seed
-  - `json` - JSON with metadata
+- `--format <FORMAT>` - Output format (default: `ssh`)
+  - `seed` - Raw 32-byte seed as hex
+  - `public-key` - Ed25519 public key as hex
+  - `private-key` - Ed25519 private key as hex (use with caution!)
+  - `ssh` - OpenSSH public key format (default, most useful)
+  - `gpg` - GPG-compatible public key info
+  - `json` - JSON with all key data and metadata
+  - `ur-entity` - UR-encoded entity (for airgapped transfer) **[requires --features bc]**
+  - `ur-pubkey` - UR-encoded public key (for returning from airgapped) **[requires --features bc]**
+  - `qr-entity` - QR code with UR-encoded entity **[requires --features bc]**
+  - `qr-pubkey` - QR code with UR-encoded public key **[requires --features bc]**
+  - `qr-animated` - Animated QR sequence for large entities (fountain codes) **[requires --features bc]**
 
 **Environment Variables:**
 - `BIP_KEYCHAIN_SEED` - (Required) BIP-39 mnemonic seed phrase
@@ -260,6 +269,115 @@ Run the complete SSKR demonstration:
 ```bash
 ./examples/sskr-backup.sh
 ```
+
+## Animated QR Codes (Fountain Encoding)
+
+**Requires:** Build with `--features bc`
+
+For entities too large to fit in a single QR code, bip-keychain uses fountain codes to split the data into multiple animated QR frames.
+
+### How It Works
+
+**Fountain Coding (Luby Transform):**
+- Generates infinite sequence of UR parts
+- Each part encodes random combination of fragments
+- Receiver collects parts until decode succeeds
+- Typically needs ~1.5x minimum fragments
+- Parts can arrive in any order
+- Resistant to packet loss
+
+**Benefits:**
+- ✓ No size limit on entities
+- ✓ Can miss frames during scanning
+- ✓ No fixed scan order required
+- ✓ Error resistant
+- ✓ Standard UR format (Blockchain Commons)
+
+### Usage
+
+```bash
+# Generate animated QR sequence
+bip-keychain derive entity.json --format qr-animated
+```
+
+This will:
+1. Encode entity as multi-part UR with fountain codes
+2. Split into ~200-byte fragments (QR-optimized)
+3. Generate sequence of QR frames
+4. Animate in terminal (loops until Ctrl+C)
+
+### Technical Details
+
+**Fragment Size:** 200 bytes (recommended)
+- Fits in standard QR code capacity (~2,953 bytes)
+- Good balance between frame count and reliability
+- Compatible with most smartphone cameras
+
+**Overhead:** ~50% (1.5x minimum fragments)
+- Ensures high probability of successful decode
+- Accounts for missed frames during scanning
+- Standard for fountain codes
+
+**Frame Rate:** 500ms per frame (default)
+- Fast enough for quick transfer
+- Slow enough for reliable scanning
+
+### Use Cases
+
+**1. Large Entities:**
+- Complex schema.org definitions
+- Multi-key derivation configs
+- Entities with extensive metadata
+
+**2. Unreliable Scanning:**
+- Poor camera quality
+- Bad lighting conditions
+- Moving displays
+
+**3. Airgapped Workflows:**
+- Hot wallet → Cold wallet
+- Smartphone → Hardware wallet
+- Desktop → Mobile
+
+### Airgapped Workflow with Animated QR
+
+```bash
+# Hot Machine (Online):
+export BIP_KEYCHAIN_SEED="<your seed>"
+bip-keychain derive large-entity.json --format qr-animated
+
+# Cold Machine (Airgapped):
+# 1. Scan animated QR frames with UR-compatible wallet
+# 2. UR decoder reconstructs entity automatically
+# 3. Derive keys securely offline
+# 4. Export public key as QR
+
+# Hot Machine:
+# 1. Scan public key QR from cold machine
+# 2. Use for verification/deployment
+```
+
+### Demo
+
+Run the complete animated QR demonstration:
+```bash
+./examples/animated-qr.sh
+```
+
+### Comparison: Single vs Animated QR
+
+**Single Static QR:**
+- ✓ Simple (one scan)
+- ✗ Limited size (~3KB max)
+- ✗ Must scan perfectly
+- ✗ No error recovery
+
+**Animated Multi-part QR:**
+- ✓ Unlimited size
+- ✓ Error resistant
+- ✓ Can miss frames
+- ✓ No fixed order
+- ✗ More complex (multiple scans)
 
 ## Testing
 

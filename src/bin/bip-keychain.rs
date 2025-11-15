@@ -122,6 +122,9 @@ enum CliOutputFormat {
     /// QR code with UR-encoded public key
     #[cfg(feature = "bc")]
     QrPubkey,
+    /// Animated QR code sequence (fountain codes for large entities)
+    #[cfg(feature = "bc")]
+    QrAnimated,
 }
 
 impl From<CliOutputFormat> for OutputFormat {
@@ -141,6 +144,8 @@ impl From<CliOutputFormat> for OutputFormat {
             CliOutputFormat::QrEntity => OutputFormat::QrEntity,
             #[cfg(feature = "bc")]
             CliOutputFormat::QrPubkey => OutputFormat::QrPubkey,
+            #[cfg(feature = "bc")]
+            CliOutputFormat::QrAnimated => OutputFormat::QrEntityAnimated,
         }
     }
 }

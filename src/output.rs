@@ -36,6 +36,9 @@ pub enum OutputFormat {
     /// QR code containing UR-encoded public key
     #[cfg(feature = "bc")]
     QrPubkey,
+    /// Animated QR code sequence for large entities (fountain codes)
+    #[cfg(feature = "bc")]
+    QrEntityAnimated,
 }
 
 /// A complete Ed25519 keypair derived from BIP-Keychain
@@ -246,6 +249,21 @@ pub fn format_key(
             let ur_string = ur::encode_pubkey(&keypair.public_key_bytes())?;
             ur::generate_qr(&ur_string)
         }
+
+        #[cfg(feature = "bc")]
+        OutputFormat::QrEntityAnimated => {
+            // Animated QR code sequence using fountain codes
+            // This generates multiple QR frames for larger entities
+            let ur_parts = ur::encode_entity_animated(key_derivation, 200, 0)?;
+            let qr_frames = ur::generate_animated_qr(&ur_parts)?;
+
+            // Display the animated sequence
+            // Note: This blocks and loops forever until Ctrl+C
+            ur::display_animated_qr(&qr_frames, 500)?;
+
+            // Never reached due to infinite loop, but needed for type
+            Ok(String::new())
+        }
     }
 }
 
@@ -373,6 +391,135 @@ mod ur {
         let mut pubkey = [0u8; 32];
         pubkey.copy_from_slice(&pubkey_bytes);
         Ok(pubkey)
+    }
+
+    /// Encode entity as multi-part animated UR using fountain codes
+    ///
+    /// For larger entities that don't fit in a single QR code, this generates
+    /// a sequence of UR parts using fountain codes. The receiver can reconstruct
+    /// the original entity from any subset of parts (typically 1.5x the number of
+    /// original fragments).
+    ///
+    /// # Arguments
+    /// * `key_derivation` - Entity to encode
+    /// * `max_fragment_len` - Maximum bytes per QR code fragment (default: 200)
+    /// * `num_parts` - Number of QR code parts to generate (0 = infinite)
+    ///
+    /// # Returns
+    /// Vector of UR strings, one per QR code frame
+    #[cfg(feature = "bc")]
+    pub fn encode_entity_animated(
+        key_derivation: &KeyDerivation,
+        max_fragment_len: usize,
+        num_parts: usize,
+    ) -> Result<Vec<String>> {
+        use ur::Encoder;
+
+        // Encode entity as CBOR
+        let entity_json = key_derivation.entity_json()?;
+        let cbor_data = serde_json::to_vec(&entity_json).map_err(|e| {
+            BipKeychainError::OutputError(format!("Failed to serialize entity: {}", e))
+        })?;
+
+        // Create fountain encoder
+        let mut encoder = Encoder::bytes(&cbor_data, max_fragment_len)
+            .map_err(|e| BipKeychainError::OutputError(format!("Failed to create encoder: {:?}", e)))?;
+
+        // Generate parts
+        let mut parts = Vec::new();
+
+        // Calculate recommended parts based on data size
+        // Fountain codes need ~1.5x the minimum fragments for reliable decoding
+        let min_fragments = (cbor_data.len() + max_fragment_len - 1) / max_fragment_len;
+        let recommended_parts = if num_parts == 0 {
+            (min_fragments as f32 * 1.5).ceil() as usize
+        } else {
+            num_parts
+        };
+
+        for _ in 0..recommended_parts {
+            let part = encoder.next_part()
+                .map_err(|e| BipKeychainError::OutputError(format!("Failed to generate part: {:?}", e)))?;
+            parts.push(part);
+        }
+
+        Ok(parts)
+    }
+
+    /// Generate animated QR code sequence from multi-part UR
+    ///
+    /// Creates ASCII QR codes for each UR part, suitable for terminal animation.
+    ///
+    /// # Arguments
+    /// * `ur_parts` - Vector of UR strings from encode_entity_animated()
+    ///
+    /// # Returns
+    /// Vector of QR code strings, one per frame
+    #[cfg(feature = "bc")]
+    pub fn generate_animated_qr(ur_parts: &[String]) -> Result<Vec<String>> {
+        use qrcode::{render::unicode, QrCode};
+
+        let mut qr_frames = Vec::new();
+
+        for (idx, ur_string) in ur_parts.iter().enumerate() {
+            let code = QrCode::new(ur_string.as_bytes()).map_err(|e| {
+                BipKeychainError::OutputError(format!("Failed to generate QR code: {:?}", e))
+            })?;
+
+            let qr_string = code
+                .render::<unicode::Dense1x2>()
+                .dark_color(unicode::Dense1x2::Light)
+                .light_color(unicode::Dense1x2::Dark)
+                .build();
+
+            let frame = format!(
+                "Frame {}/{}\n\n{}\n\nUR: {}",
+                idx + 1,
+                ur_parts.len(),
+                qr_string,
+                ur_string
+            );
+            qr_frames.push(frame);
+        }
+
+        Ok(qr_frames)
+    }
+
+    /// Display animated QR codes in terminal
+    ///
+    /// Cycles through QR code frames with configurable delay.
+    /// Press Ctrl+C to stop.
+    ///
+    /// # Arguments
+    /// * `qr_frames` - Vector of QR code strings from generate_animated_qr()
+    /// * `frame_delay_ms` - Milliseconds to display each frame (default: 500)
+    #[cfg(feature = "bc")]
+    pub fn display_animated_qr(qr_frames: &[String], frame_delay_ms: u64) -> Result<()> {
+        use std::io::Write;
+        use std::thread;
+        use std::time::Duration;
+
+        if qr_frames.is_empty() {
+            return Err(BipKeychainError::OutputError(
+                "No QR frames to display".to_string(),
+            ));
+        }
+
+        eprintln!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        eprintln!("  Animated QR Code - {} frames", qr_frames.len());
+        eprintln!("  Press Ctrl+C to stop");
+        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+        loop {
+            for frame in qr_frames {
+                // Clear screen (ANSI escape codes)
+                print!("\x1B[2J\x1B[1;1H");
+                println!("{}", frame);
+                std::io::stdout().flush().ok();
+
+                thread::sleep(Duration::from_millis(frame_delay_ms));
+            }
+        }
     }
 }
 

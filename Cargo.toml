@@ -39,11 +39,12 @@ bc-ur = { version = "0.5", optional = true }  # Uniform Resources for airgapped 
 dcbor = { version = "0.15", optional = true }  # Deterministic CBOR encoding
 qrcode = { version = "0.14", optional = true }  # QR code generation
 sskr = { version = "0.9", optional = true }  # Shamir's Secret Sharing for seed backup
+ur = { version = "0.4", optional = true }  # Fountain codes for multi-part animated QR
 
 [features]
 default = []
 # Blockchain Commons integration
-bc = ["bc-ur", "dcbor", "qrcode", "sskr"]
+bc = ["bc-ur", "dcbor", "qrcode", "sskr", "ur"]
 
 [dev-dependencies]
 # Testing
