@@ -21,6 +21,10 @@ pub mod error;
 pub mod hash;
 pub mod output;
 
+// Blockchain Commons modules (optional)
+#[cfg(feature = "bc")]
+pub mod sskr;
+
 // Re-exports for convenience
 pub use bip32_wrapper::{DerivedKey, Keychain};
 pub use derivation::derive_key_from_entity;

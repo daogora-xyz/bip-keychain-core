@@ -59,6 +59,41 @@ enum Commands {
         #[arg(short = 'w', long, default_value = "24")]
         words: usize,
     },
+
+    /// Backup seed using SSKR (Shamir's Secret Sharing)
+    ///
+    /// Splits a BIP-39 seed into N shares where M are required to recover.
+    /// Outputs shares as hex-encoded files for distribution to trusted parties.
+    ///
+    /// Example: 2-of-3 backup (distribute 3 shares, any 2 can recover)
+    ///   bip-keychain backup-seed --groups 3 --threshold 2 --output-dir ./shares
+    #[cfg(feature = "bc")]
+    BackupSeed {
+        /// Total number of shares to generate (2-16)
+        #[arg(short = 'n', long, default_value = "3")]
+        groups: u8,
+
+        /// Number of shares required to recover (1-groups)
+        #[arg(short = 't', long, default_value = "2")]
+        threshold: u8,
+
+        /// Output directory for share files
+        #[arg(short = 'o', long, default_value = "./sskr-shares")]
+        output_dir: PathBuf,
+    },
+
+    /// Recover seed from SSKR shares
+    ///
+    /// Combines M-of-N SSKR shares to recover the original seed phrase.
+    ///
+    /// Example:
+    ///   bip-keychain recover-seed share-1.hex share-2.hex
+    #[cfg(feature = "bc")]
+    RecoverSeed {
+        /// Paths to share files (hex-encoded)
+        #[arg(value_name = "SHARE_FILES", required = true)]
+        share_files: Vec<PathBuf>,
+    },
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]
@@ -120,6 +155,14 @@ fn main() -> Result<()> {
             format,
         } => derive_command(entity_file, parent_entropy, format),
         Commands::GenerateSeed { words } => generate_seed_command(words),
+        #[cfg(feature = "bc")]
+        Commands::BackupSeed {
+            groups,
+            threshold,
+            output_dir,
+        } => backup_seed_command(groups, threshold, output_dir),
+        #[cfg(feature = "bc")]
+        Commands::RecoverSeed { share_files } => recover_seed_command(share_files),
     }
 }
 
@@ -237,7 +280,156 @@ fn generate_seed_command(words: usize) -> Result<()> {
     eprintln!("  • There is NO password reset or customer support");
     eprintln!();
     eprintln!("For advanced backup, consider Shamir's Secret Sharing (SSKR):");
-    eprintln!("  https://github.com/BlockchainCommons/bc-sskr");
+    eprintln!("  bip-keychain backup-seed --help");
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    Ok(())
+}
+
+#[cfg(feature = "bc")]
+fn backup_seed_command(groups: u8, threshold: u8, output_dir: PathBuf) -> Result<()> {
+    use bip39::Mnemonic;
+    use bip_keychain::sskr::{shard_seed, SskrPolicy};
+
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  SSKR Seed Backup - Shamir's Secret Sharing");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+
+    // Create SSKR policy
+    let policy = SskrPolicy::new(groups, threshold)
+        .context("Failed to create SSKR policy")?;
+
+    eprintln!("Policy: {}-of-{} shares", threshold, groups);
+    eprintln!("  • Total shares: {}", groups);
+    eprintln!("  • Required to recover: {}", threshold);
+    eprintln!();
+
+    // Get seed phrase from environment variable
+    let seed_phrase = env::var("BIP_KEYCHAIN_SEED").context(
+        "BIP_KEYCHAIN_SEED environment variable not set.\n\
+         Set your BIP-39 seed phrase: export BIP_KEYCHAIN_SEED=\"your twelve word phrase...\"\n\
+         \n\
+         For security reasons, seed phrases must be passed via environment variable.",
+    )?;
+
+    // Parse mnemonic to get seed entropy
+    let mnemonic = Mnemonic::parse(&seed_phrase)
+        .context("Failed to parse seed phrase. Ensure it's a valid BIP-39 mnemonic.")?;
+
+    let seed_entropy = mnemonic.to_entropy();
+
+    eprintln!("Seed entropy: {} bytes ({} bits)", seed_entropy.len(), seed_entropy.len() * 8);
+    eprintln!();
+
+    // Shard the seed
+    eprintln!("Generating SSKR shares...");
+    let shares = shard_seed(&seed_entropy, &policy)
+        .context("Failed to shard seed")?;
+
+    eprintln!("✓ Generated {} shares", shares.len());
+    eprintln!();
+
+    // Create output directory
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("Failed to create output directory: {}", output_dir.display()))?;
+
+    eprintln!("Writing shares to: {}", output_dir.display());
+    eprintln!();
+
+    // Write shares to files
+    for (idx, share) in shares.iter().enumerate() {
+        let share_num = idx + 1;
+        let filename = format!("share-{:02}-of-{:02}.hex", share_num, groups);
+        let filepath = output_dir.join(&filename);
+
+        let hex_share = hex::encode(share);
+        std::fs::write(&filepath, &hex_share)
+            .with_context(|| format!("Failed to write share file: {}", filepath.display()))?;
+
+        eprintln!("  ✓ {} ({} bytes)", filename, share.len());
+    }
+
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  DISTRIBUTION INSTRUCTIONS");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+    eprintln!("1. DISTRIBUTE shares to {} trusted parties/locations", groups);
+    eprintln!("2. Any {} shares can RECOVER the seed", threshold);
+    eprintln!("3. Store shares SEPARATELY (different physical locations)");
+    eprintln!("4. NEVER store all shares together or in one location");
+    eprintln!();
+    eprintln!("Use cases:");
+    eprintln!("  • 2-of-3: Personal backup (family, trusted friends, safe deposit box)");
+    eprintln!("  • 3-of-5: Enterprise backup (require 3 of 5 executives)");
+    eprintln!("  • 2-of-2: Couples/partners (both required)");
+    eprintln!();
+    eprintln!("To recover:");
+    eprintln!("  bip-keychain recover-seed share-*.hex");
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    Ok(())
+}
+
+#[cfg(feature = "bc")]
+fn recover_seed_command(share_files: Vec<PathBuf>) -> Result<()> {
+    use bip39::Mnemonic;
+    use bip_keychain::sskr::recover_seed;
+
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  SSKR Seed Recovery");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+
+    eprintln!("Loading {} share files...", share_files.len());
+    eprintln!();
+
+    // Read all share files
+    let mut shares: Vec<Vec<u8>> = Vec::new();
+    for share_file in share_files.iter() {
+        let hex_share = std::fs::read_to_string(share_file)
+            .with_context(|| format!("Failed to read share file: {}", share_file.display()))?;
+
+        let share_bytes = hex::decode(hex_share.trim())
+            .with_context(|| format!("Failed to decode hex from: {}", share_file.display()))?;
+
+        eprintln!("  ✓ {} ({} bytes)", share_file.display(), share_bytes.len());
+        shares.push(share_bytes);
+    }
+
+    eprintln!();
+    eprintln!("Recovering seed from shares...");
+
+    // Recover the seed
+    let recovered_entropy = recover_seed(&shares)
+        .context("Failed to recover seed from shares. Ensure you have enough shares (threshold).")?;
+
+    eprintln!("✓ Seed recovered successfully");
+    eprintln!();
+
+    // Convert entropy back to mnemonic
+    let mnemonic = Mnemonic::from_entropy(&recovered_entropy)
+        .context("Failed to create mnemonic from recovered entropy")?;
+
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  RECOVERED SEED PHRASE");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+    println!("{}", mnemonic);
+    eprintln!();
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("  SECURITY REMINDER");
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!();
+    eprintln!("WRITE DOWN this seed phrase on paper immediately.");
+    eprintln!("NEVER store digitally or share with anyone.");
+    eprintln!();
+    eprintln!("To use:");
+    eprintln!("  export BIP_KEYCHAIN_SEED=\"<your recovered phrase>\"");
+    eprintln!("  bip-keychain derive entity.json");
     eprintln!();
     eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 

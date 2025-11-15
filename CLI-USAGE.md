@@ -97,12 +97,169 @@ a1b2c3d4e5f6...  (64 hex characters = 32 bytes)
 
 ### `generate-seed` - Generate BIP-39 seed phrase
 
-**Status:** Not yet implemented
+Creates a cryptographically secure random BIP-39 mnemonic seed phrase.
 
-For now, use external tools:
-- [BIP-39 Tool](https://iancoleman.io/bip39/) (use offline!)
-- Hardware wallets (Ledger, Trezor)
-- `bitcoin-cli` or other wallet software
+**Syntax:**
+```bash
+bip-keychain generate-seed [OPTIONS]
+```
+
+**Options:**
+- `--words <N>` - Number of words (12, 15, 18, 21, or 24) [default: 24]
+
+**Examples:**
+```bash
+# Generate 24-word seed (256 bits entropy)
+bip-keychain generate-seed
+
+# Generate 12-word seed (128 bits entropy)
+bip-keychain generate-seed --words 12
+```
+
+**Security Warning:**
+- Write down the seed phrase on paper IMMEDIATELY
+- Never store digitally (no screenshots, photos, or files)
+- Never share with anyone
+- Store securely (fireproof safe, bank vault, etc.)
+- Consider SSKR backup for redundancy (see below)
+
+### `backup-seed` - SSKR Seed Backup (Blockchain Commons feature)
+
+**Requires:** Build with `--features bc`
+
+Splits a BIP-39 seed into N shares using Shamir's Secret Sharing, where M shares are required to recover.
+
+**Syntax:**
+```bash
+bip-keychain backup-seed [OPTIONS]
+```
+
+**Options:**
+- `--groups <N>` - Total number of shares to generate (2-16) [default: 3]
+- `--threshold <M>` - Number of shares required to recover (1-groups) [default: 2]
+- `--output-dir <DIR>` - Output directory for share files [default: ./sskr-shares]
+
+**Environment Variables:**
+- `BIP_KEYCHAIN_SEED` - (Required) BIP-39 mnemonic to backup
+
+**Examples:**
+
+```bash
+# 2-of-3 backup (personal backup)
+export BIP_KEYCHAIN_SEED="your twelve word seed phrase here"
+bip-keychain backup-seed --groups 3 --threshold 2
+
+# 3-of-5 backup (enterprise backup)
+bip-keychain backup-seed --groups 5 --threshold 3 --output-dir ./company-backup
+
+# 2-of-2 backup (couples/partners requiring both)
+bip-keychain backup-seed --groups 2 --threshold 2
+```
+
+**Output:**
+Creates hex-encoded share files:
+```
+./sskr-shares/
+  share-01-of-03.hex
+  share-02-of-03.hex
+  share-03-of-03.hex
+```
+
+**Distribution Best Practices:**
+1. **2-of-3 Personal Backup:**
+   - Share 1: Family member (spouse/parent)
+   - Share 2: Trusted friend
+   - Share 3: Safe deposit box or secure storage
+
+2. **3-of-5 Enterprise Backup:**
+   - Distribute to 5 executives/board members
+   - Requires 3 to recover (business continuity)
+   - Survives departure of 2 key people
+
+3. **2-of-2 Joint Control:**
+   - Both partners required for access
+   - Maximum protection against unilateral action
+
+**Security Properties:**
+- Information-theoretically secure
+- M-1 shares reveal NOTHING about the secret
+- Any M-of-N combination can recover
+- Based on Shamir's Secret Sharing (provably secure)
+
+### `recover-seed` - Recover Seed from SSKR Shares
+
+**Requires:** Build with `--features bc`
+
+Combines M-of-N SSKR shares to recover the original BIP-39 seed phrase.
+
+**Syntax:**
+```bash
+bip-keychain recover-seed <SHARE_FILES>...
+```
+
+**Arguments:**
+- `<SHARE_FILES>...` - Paths to hex-encoded share files (at least threshold required)
+
+**Examples:**
+
+```bash
+# Recover using 2 of 3 shares
+bip-keychain recover-seed \
+  ./sskr-shares/share-01-of-03.hex \
+  ./sskr-shares/share-02-of-03.hex
+
+# Recover using different shares
+bip-keychain recover-seed \
+  ./sskr-shares/share-01-of-03.hex \
+  ./sskr-shares/share-03-of-03.hex
+
+# Recover using wildcard (if you have threshold or more shares)
+bip-keychain recover-seed ./sskr-shares/share-*.hex
+```
+
+**Output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RECOVERED SEED PHRASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECURITY REMINDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WRITE DOWN this seed phrase on paper immediately.
+NEVER store digitally or share with anyone.
+```
+
+**SSKR Workflow:**
+```bash
+# 1. Generate new seed
+NEW_SEED=$(bip-keychain generate-seed --words 24)
+export BIP_KEYCHAIN_SEED="$NEW_SEED"
+
+# 2. Create SSKR backup (2-of-3)
+bip-keychain backup-seed --groups 3 --threshold 2
+
+# 3. Distribute shares to trusted parties/locations
+
+# 4. TEST recovery immediately (critical!)
+bip-keychain recover-seed \
+  ./sskr-shares/share-01-of-03.hex \
+  ./sskr-shares/share-02-of-03.hex
+
+# 5. Store original seed securely (metal backup recommended)
+
+# 6. Document the policy for inheritors:
+#    "This wallet uses 2-of-3 SSKR backup. Any 2 shares can recover."
+```
+
+**Demo:**
+Run the complete SSKR demonstration:
+```bash
+./examples/sskr-backup.sh
+```
 
 ## Testing
 
