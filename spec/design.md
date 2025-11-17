@@ -175,7 +175,7 @@ pub enum OutputFormat {
 pub fn format_key(
     key: &ExtendedKey,
     format: OutputFormat,
-    metadata: &Derivation Metadata,
+    metadata: &DerivationMetadata,
 ) -> Result<String, OutputError>;
 ```
 
